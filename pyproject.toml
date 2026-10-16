@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tartim"
+version = "0.1.0"
+description = "Pardus/Linux için vücut kompozisyon analizörü (Tanita uyumlu) okuyucusu"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.11"
+dependencies = ["pyserial>=3.5"]
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Natural Language :: Turkish",
+]
+
+[project.scripts]
+tartim = "tartim.cli:main"
+
+[tool.setuptools]
+packages = ["tartim"]
