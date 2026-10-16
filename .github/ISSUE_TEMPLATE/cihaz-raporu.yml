@@ -1,14 +1,16 @@
 name: Cihaz raporu
-description: "tartim rapor" ile hazırlanan dosyayı gönderin
+description: 'tartim rapor ile ya da arayüzdeki "Cihaz raporu" düğmesiyle hazırlanan dosyayı gönderin'
 title: "Cihaz raporu: "
 labels: ["cihaz-raporu"]
 body:
   - type: markdown
     attributes:
       value: |
-        Katkınız için teşekkürler! Raporu hazırlamak için tartıyı bilgisayara takıp
-        `tartim rapor` komutunu çalıştırın. Oluşan `tartim-rapor-....json` dosyasını
-        aşağıya sürükleyip bırakın.
+        Katkınız için teşekkürler! Raporu Tartım uygulamasındaki **Cihaz raporu**
+        düğmesiyle ya da `tartim rapor` komutuyla hazırlayın. Oluşan
+        `tartim-rapor-....json` dosyasını aşağıdaki **Rapor dosyası** kutusuna
+        sürükleyip bırakın. Adım adım anlatım:
+        [Kullanım kılavuzu](https://github.com/muratGursel/tartim/blob/main/docs/KULLANIM.md#7-cihaz-raporu-hazırlamak-ve-göndermek)
 
         **Gerçek bir danışanın ölçümünü göndermeyin.** Ölçümü kendinizle ya da bir
         test kişisiyle yapın.

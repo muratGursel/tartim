@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bağımlılıklar
-        run: sudo apt-get update -q && sudo apt-get install -y -q python3-serial socat
+        run: sudo apt-get update -q && sudo apt-get install -y -q python3-serial python3-yaml socat
       - name: Testler
         run: python3 -m unittest -v
 
