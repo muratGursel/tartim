@@ -1,174 +1,188 @@
 # tartim
 
-Pardus ve diğer GNU/Linux sistemlerinde **vücut kompozisyon analizörlerinden**
-(Tanita uyumlu cihazlar) ölçüm almak için açık kaynak okuyucu.
+**[Türkçe](README.tr.md)** · English
 
-Üreticinin bilgisayar yazılımı yalnızca Windows'ta çalışıyor. `tartim` cihazın
-seri port (RS-232 / USB) üzerinden gönderdiği ölçümü okur, çözer ve yerel bir
-veritabanına kaydeder. SD karttaki CSV dosyalarını da içe aktarabilir.
+An open-source reader for **body composition analyzers** (Tanita-compatible
+devices) on Pardus and other GNU/Linux systems.
 
-> **Durum: erken geliştirme (0.1).** Veri biçimi kılavuzlara ve topluluk
-> notlarına dayanıyor, henüz gerçek bir cihazla doğrulanmadı. Ayrıntılar:
-> [docs/PROTOKOL.md](docs/PROTOKOL.md)
+The vendor's PC software only runs on Windows. `tartim` reads the measurement a
+device sends over a serial port (RS-232 / USB) or Bluetooth, decodes it and
+stores it in a local database. It can also import the CSV files written to an
+SD card.
 
-Tanita, TANITA Corporation'ın tescilli markasıdır. Bu proje Tanita ile bağlantılı
-değildir.
+> **Status: early development.** The data format is based on manuals and
+> community notes and has not been verified on a real device yet. Details:
+> [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
-## Kurulum (Pardus 23 / 25)
+Tanita is a registered trademark of TANITA Corporation. This project is not
+affiliated with Tanita.
 
-Uçbirimde tek komut:
+The interface is available in **Turkish** and **English** and follows the
+system language (`TARTIM_LANG=en` or `TARTIM_LANG=tr` overrides it).
+
+## Installation (Pardus 23 / 25, Debian-based systems)
+
+One command in a terminal:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/muratGursel/tartim/main/install.sh | sudo sh
 ```
 
-Ya da [Sürümler](https://github.com/muratGursel/tartim/releases) sayfasından
-`tartim_*_all.deb` dosyasını indirip kurun:
+Or download `tartim_*_all.deb` from the
+[Releases](https://github.com/muratGursel/tartim/releases) page and install it:
 
 ```sh
-sudo apt install ./tartim_0.2.0_all.deb
+sudo apt install ./tartim_*_all.deb
 ```
 
-Paket, oturum açmış kullanıcıya USB-seri portlara erişim izni veren bir udev
-kuralı da kurar; `dialout` grubuna eklenmeniz gerekmez. RS-232 portu doğrudan
-anakartta ise (`/dev/ttyS*`) `sudo usermod -aG dialout $USER` gerekir.
+The package also installs a udev rule that gives the logged-in user access to
+USB-serial ports, so you do not need to join the `dialout` group. For an RS-232
+port on the motherboard (`/dev/ttyS*`) run `sudo usermod -aG dialout $USER`.
 
-Geliştirme için kaynaktan çalıştırmak: `sudo apt install python3-serial` ve
-depo klasöründe `python3 -m tartim`.
+To run from source during development: `sudo apt install python3-serial
+python3-gi gir1.2-gtk-3.0` and `python3 -m tartim` in the repository folder.
 
-## Masaüstü arayüzü
+## Desktop interface
 
-Kurulumdan sonra uygulama menüsünde **Tartım** adıyla görünür; uçbirimden
-`tartim-arayuz` ile de açılır.
+After installation it appears in the application menu as **Tartım**; it can
+also be started with `tartim-arayuz`.
 
-![Tartım arayüzü (sentetik örnek veri)](docs/ekran/02-olcum.png)
+![The Tartım interface (synthetic sample data)](docs/screenshots/en/02-measurement.png)
 
-Adım adım anlatım için: **[Kullanım kılavuzu](docs/KULLANIM.md)**
-([PDF olarak indir](docs/Tartim-Kullanim-Kilavuzu.pdf))
+Step-by-step instructions: **[User guide](docs/USER_GUIDE.md)**
+([PDF](docs/Tartim-User-Guide.pdf)) · Turkish: [Kullanım kılavuzu](docs/KULLANIM.md)
 
-1. Tartının portunu seçip **Bağlan**'a basın.
-2. Cihazda ölçüm yapın; sonuç solda görünür ve otomatik kaydedilir.
-3. Geçmiş ölçümler sağda listelenir. **SD karttan içe aktar** ve **Excel için
-   dışa aktar** düğmeleri buradadır.
-4. **Cihaz raporu** düğmesi, geliştiricilere gönderilecek raporu üç adımda
-   hazırlar.
+1. Choose the scale's port and press **Connect**.
+2. Take a measurement on the device; the result appears on the left and is saved
+   automatically.
+3. Saved measurements are listed on the right, with **Import from SD card** and
+   **Export for Excel**.
+4. **Device report** prepares a report for the developers in a few steps.
 
 ## Bluetooth
 
-Port alanının yanındaki Bluetooth düğmesi yakındaki tartıları arar
-(komut satırında: `tartim bluetooth`).
+The Bluetooth button next to the port field searches for nearby scales
+(command line: `tartim bluetooth`).
 
-- **Standart Bluetooth tartılar** (Weight Scale / Body Composition servisi
-  olanlar): listeden seçip **Bağlan**'a basın, ölçümler canlı gelir.
-- **Klasik Bluetooth seri cihazlar**: önce sistem ayarlarından eşleştirin
-  (PIN genellikle 0000 ya da 1234), sonra listeden seçip bağlanın.
-- **Üreticiye özel protokoller** (ör. Tartı FAST): henüz doğrudan
-  okunamıyor. Bir **cihaz raporu** gönderirseniz destek ekleyebiliriz.
-  Ayrıntılar: [docs/PROTOKOL.md](docs/PROTOKOL.md#bluetooth)
+- **Standard Bluetooth scales** (with the Weight Scale / Body Composition
+  service): choose one in the list and press **Connect**; measurements arrive live.
+- **Classic Bluetooth serial devices**: pair them first in the system settings
+  (the PIN is usually 0000 or 1234), then choose and connect.
+- **Vendor-specific protocols** (e.g. Tartı FAST): cannot be read directly yet.
+  If you send a **device report**, we can add support.
+  Details: [docs/PROTOCOL.md](docs/PROTOCOL.md#bluetooth)
 
-## Komut satırı
-
-```sh
-tartim portlar                         # bağlı seri portlar
-tartim dinle --port /dev/ttyUSB0       # ölçümleri göster ve kaydet
-tartim ice-aktar /media/$USER/SD/*.CSV # SD karttan içe aktar
-tartim listele --son 10
-tartim disa-aktar --cikti olcumler.csv # Excel / LibreOffice için
-tartim ham --port /dev/ttyUSB0         # yeni cihaz için ham veri
-```
-
-## Tartınız mı var? Cihaz raporu gönderin
-
-Projenin gelişmesi için en çok ihtiyaç duyduğumuz şey farklı cihazlardan
-gerçek ölçüm verisi. Tartıyı bilgisayara takın ve şunu çalıştırın:
+## Command line
 
 ```sh
-tartim rapor          # ya da arayüzde "Cihaz raporu" düğmesi
+tartim ports                           # connected serial ports
+tartim listen --port /dev/ttyUSB0      # show and save measurements
+tartim import /media/$USER/SD/*.CSV    # import from an SD card
+tartim list --last 10
+tartim export --output measurements.csv  # for Excel / LibreOffice
+tartim raw --port /dev/ttyUSB0         # raw data for a new device
 ```
 
-Program yalnızca cihaz modelini ve ekranda gördüğünüz kiloyu sorar, portu
-kendisi bulur. Siz ölçüm yaptığınızda gelen veriyi kaydeder ve bir
-`tartim-rapor-MODEL-TARIH.json` dosyası oluşturur. Danışan numarası dosyaya
-yazılmadan maskelenir. Bu dosyayı
-[Cihaz raporu formuyla](https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml)
-gönderin.
+The Turkish command names of earlier releases (`dinle`, `ice-aktar`, `rapor`, …)
+keep working as aliases.
 
-- SD kart dosyası için: `tartim rapor --dosya /media/$USER/SD/20261016.CSV`
-- Bluetooth'lu tartılar için: `tartim rapor --bluetooth` (ya da arayüzde
-  "Cihaz raporu → Bluetooth ile…")
-- Daha fazla bilgi vermek isterseniz: `tartim rapor --ayrintili` (cihaz
-  ayarlarını, cihaza girilen boy/yaş/cinsiyeti ve ekrandaki tüm değerleri
-  sorar; değerleri veriyle karşılaştırıp hangi alanın neye karşılık geldiğini
-  gösterir)
+Port settings: `--baud 9600 --parity N --bytesize 8 --stopbits 1` (defaults).
 
-Ölçümü kendinizle ya da bir test kişisiyle yapın; gerçek bir danışanın
-ölçümünü göndermeyin.
+Measurements are stored in `~/.local/share/tartim/tartim.db`, created readable
+by you only.
 
-Port ayarları: `--baud 9600 --parite N --veri-biti 8 --dur-biti 1` (varsayılan).
+## Own a scale? Send a device report
 
-Ölçümler `~/.local/share/tartim/tartim.db` dosyasında saklanır. Dosya yalnızca
-sizin okuyabileceğiniz izinlerle oluşturulur.
-
-## Cihaz olmadan deneme
+What the project needs most is real data from different devices. Plug the scale
+in and run:
 
 ```sh
-socat -d -d pty,raw,echo=0,link=/tmp/tarti pty,raw,echo=0,link=/tmp/pc &
-python3 -m tartim dinle --port /tmp/pc &
-python3 -m tartim simule --port /tmp/tarti --adet 3
+tartim report          # or the "Device report" button in the interface
 ```
 
-Simülatörün ürettiği değerler sentetiktir ve hiçbir kişiye ait değildir.
+It only asks for the device model and the weight shown on the display, and finds
+the port by itself. It records the data while you measure and writes a
+`tartim-report-MODEL-DATE.json` file; the client number is masked before
+anything is written. You then choose how to send it: to the project server
+(no account needed), with the
+[GitHub form](https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml),
+or later (`tartim send-report FILE`).
 
-## Testler
+- SD card file: `tartim report --file /media/$USER/SD/20261016.CSV`
+- Bluetooth scales: `tartim report --bluetooth` (or "Device report → With Bluetooth…")
+- To give more detail: `tartim report --detailed` (asks for device settings, the
+  height/age/gender entered on the device and all values on the display, and
+  shows which field matches what)
+
+Measure yourself or a test person; never send a real client's measurement.
+
+## Trying it without a device
+
+```sh
+socat -d -d pty,raw,echo=0,link=/tmp/scale pty,raw,echo=0,link=/tmp/pc &
+python3 -m tartim listen --port /tmp/pc &
+python3 -m tartim simulate --port /tmp/scale --count 3
+```
+
+The values produced by the simulator are synthetic and belong to no one.
+
+## Tests
 
 ```sh
 python3 -m unittest -v
 ```
 
-Seri port testi Linux'ta `socat` ve `python3-serial` kuruluysa çalışır.
-Arayüz testi bir ekran ister; ekransız bir sunucuda GTK Broadway ile
-çalıştırılabilir:
+The serial port test runs on Linux when `socat` and `python3-serial` are
+installed. The interface tests need a display; on a headless server they run
+with GTK Broadway:
 `broadwayd :5 & GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 python3 -m unittest`
 
-## Kişisel veriler (KVKK)
+## Translations
 
-Vücut ölçümleri sağlık verisidir ve KVKK'ya göre özel nitelikli kişisel veri
-sayılır. Kurumunuzda kullanmadan önce açık rıza, erişim yetkisi ve saklama
-süresi konularını veri sorumlunuzla netleştirin. Gerçek ölçüm kayıtlarını
-hata bildirimlerine ya da bu depoya eklemeyin.
+Source strings are English; translations are gettext `.po` files in
+[`tartim/locale/`](tartim/locale). They are compiled in memory at start-up, so
+no build step is needed. A test checks that every message has a Turkish
+translation and that the placeholders match. To add a language, copy `tr.po`
+to `<code>.po`, translate the `msgstr` lines and send a pull request.
 
-## Yol haritası
+## Report server
 
-- [ ] Gerçek MC-780 / BC-418 cihazlarla alan kodlarını doğrulamak
-- [ ] `CS` sağlama değerini doğrulamak
-- [ ] Uzak kip: boy, yaş ve cinsiyetin bilgisayardan cihaza gönderilmesi
-- [x] Masaüstü arayüzü (GTK)
-- [ ] Danışan kaydı ve gelişim grafikleri
-- [x] Bluetooth: standart BLE tartılar, klasik seri port, keşif raporu
-- [ ] Tartı FAST protokolü (cihaz raporu bekleniyor)
-- [ ] PDF ölçüm raporu
-- [x] `.deb` paketi ve tek komutla kurulum
-- [ ] Pardus Mağazası'na başvuru
-- [ ] Diğer markalar için eklenti yapısı
+Users can send device reports from the application without a GitHub account.
+A small service at `https://ldow.duckdns.org/tartim/report` validates them and
+forwards them to a private repository; the GitHub token stays on the server.
+Installation and security model: [server/INSTALL.md](server/INSTALL.md).
+Sending is optional; organisations can point the application to their own
+server with `TARTIM_REPORT_URL` or switch the option off with an empty value.
 
-## Katkı
+## Personal data (KVKK / GDPR)
 
-Elinizde bir tartı varsa en değerli katkı `tartim rapor` ile hazırlanan
-dosyadır (yukarıya bakın). Protokol ayrıntıları:
-[docs/PROTOKOL.md](docs/PROTOKOL.md).
+Body measurements are health data, a special category of personal data. Before
+using the application in your organisation, settle consent, access rights and
+retention with your data controller. Never attach real measurement records to
+bug reports or to this repository.
 
-Paketi kaynaktan derlemek için: `sh packaging/build-deb.sh`
+## Roadmap
 
-## Rapor sunucusu
+- [ ] Verify the field codes on real MC-780 / BC-418 devices
+- [ ] Verify the `CS` checksum
+- [ ] Remote mode: send height, age and gender from the computer to the device
+- [x] Desktop interface (GTK)
+- [ ] Client records and progress charts
+- [x] Bluetooth: standard BLE scales, classic serial port, discovery report
+- [ ] Tartı FAST protocol (waiting for a device report)
+- [ ] PDF measurement report
+- [x] `.deb` package and one-command installation
+- [x] Turkish and English interface and documentation
+- [ ] Submission to the Pardus Store
+- [ ] Plug-in structure for other brands
 
-Kullanıcılar cihaz raporlarını GitHub hesabı olmadan, uygulamadan tek tıkla
-gönderebilir. Raporlar `https://ldow.duckdns.org/tartim/rapor` adresindeki küçük
-bir servis tarafından denetlenip özel bir depoya iletilir; GitHub anahtarı
-yalnızca sunucuda durur. Kurulum ve güvenlik modeli:
-[server/KURULUM.md](server/KURULUM.md). Gönderim isteğe bağlıdır: kullanıcı GitHub
-formunu kullanabilir ya da hiç göndermeyebilir; kurumlar `TARTIM_RAPOR_ADRESI`
-ile kendi sunucularını verebilir ya da seçeneği kapatabilir.
+## Contributing
 
-## Lisans
+If you own a scale, the most valuable contribution is a file made with
+`tartim report` (see above). Protocol details: [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
-GPL-3.0-or-later. Bkz. [LICENSE](LICENSE).
+To build the package from source: `sh packaging/build-deb.sh`
+
+## License
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).

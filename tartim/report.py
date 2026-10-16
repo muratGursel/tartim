@@ -1,9 +1,9 @@
-"""Cihaz raporu: tartısı olan kullanıcılardan geliştirme verisi toplamak.
+"""Device report: collecting development data from people who own a scale.
 
-``tartim rapor`` kullanıcıya birkaç kısa soru sorar, cihazdan ham ölçüm
-verisini kaydeder ve cihaz ekranında okunan değerleri bu veriyle karşılaştırır.
-Sonuç, proje ile paylaşılmak üzere tek bir JSON dosyasıdır. Danışan numarası
-dosyaya yazılmadan önce sıfırlarla maskelenir.
+``tartim report`` asks a few short questions, records the raw measurement data
+from the device and compares it with the values read on the device display.
+The result is a single JSON file to share with the project. The client number
+is masked with zeros before anything is written.
 """
 
 from __future__ import annotations
@@ -23,39 +23,62 @@ from pathlib import Path
 
 from . import __version__
 from .fields import describe
+from .i18n import N_, _, ngettext
 from .protocol import Framer, parse
 
 SCHEMA_VERSION = 1
+# The template keeps its original file name so links in older releases still work.
 REPORT_FORM_URL = "https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml"
+DEFAULT_SERVER = "https://ldow.duckdns.org/tartim/report"
 
-# Cihaz ekranından okunacak sonuçlar: (soru, beklenen kod)
+# Results read on the device display: (question, expected code)
 SCREEN_FIELDS = [
-    ("Kilo (kg)", "Wk"),
-    ("Yağ oranı (%)", "FW"),
-    ("Yağ kütlesi (kg)", "fW"),
-    ("Kas kütlesi (kg)", "mW"),
-    ("Kemik kütlesi (kg)", "bW"),
-    ("Toplam vücut suyu (%)", "ww"),
-    ("Viseral yağ derecesi", "IF"),
-    ("Bazal metabolizma hızı (kcal)", "rB"),
-    ("Metabolik yaş", "rA"),
+    (N_("Weight (kg)"), "Wk"),
+    (N_("Body fat (%)"), "FW"),
+    (N_("Fat mass (kg)"), "fW"),
+    (N_("Muscle mass (kg)"), "mW"),
+    (N_("Bone mass (kg)"), "bW"),
+    (N_("Total body water (%)"), "ww"),
+    (N_("Visceral fat rating"), "IF"),
+    (N_("Basal metabolic rate (kcal)"), "rB"),
+    (N_("Metabolic age"), "rA"),
     ("BMI", "MI"),
 ]
-# Ölçümden önce cihaza girilen bilgiler.
+# Values entered on the device before measuring.
 INPUT_FIELDS = [
-    ("Cinsiyet (1: erkek, 2: kadın)", "GE"),
-    ("Yaş", "AG"),
-    ("Boy (cm)", "Hm"),
-    ("Kıyafet ağırlığı / dara (kg)", "Pt"),
+    (N_("Gender (1: male, 2: female)"), "GE"),
+    (N_("Age"), "AG"),
+    (N_("Height (cm)"), "Hm"),
+    (N_("Clothes weight / tare (kg)"), "Pt"),
 ]
-CONNECTIONS = ["RS-232 (USB-seri çevirici ile)", "USB (doğrudan)", "SD kart dosyası",
-               "Bluetooth"]
+CONNECTIONS = [N_("RS-232 (with a USB-serial adapter)"), N_("USB (direct)"),
+               N_("SD card file"), "Bluetooth"]
+SEND_OPTIONS = [
+    (N_("Send to the project server (no account needed)"), "server"),
+    (N_("I will send it myself with the GitHub form"), "github"),
+    (N_("Do not send now, keep the file on my computer"), "later"),
+]
+
+# Messages for the error codes returned by the report server.
+SERVER_ERRORS = {
+    "consent-required": N_("You must confirm that the measurement does not belong to a "
+                           "real client."),
+    "unknown-format": N_("The report format was not recognised."),
+    "model-missing": N_("The device model is missing."),
+    "measurements-invalid": N_("The measurement list is not valid."),
+    "note-invalid": N_("The note must be text."),
+    "invalid-request": N_("The request was not valid."),
+    "unreadable": N_("The report could not be read."),
+    "too-large": N_("The report is too large."),
+    "rate-limited": N_("Too many reports were sent; please try again later."),
+    "server-full": N_("The server is not accepting reports right now; please try again later."),
+}
 
 _ID_RE = re.compile(rb'(\bID,"?)(\d+)')
 
 
 def mask_subject_ids(data: bytes) -> tuple[bytes, int]:
-    """``ID`` alanındaki danışan numaralarını aynı uzunlukta sıfırlarla değiştirir."""
+    """Replaces the client numbers in ``ID`` fields with zeros of the same length."""
     return _ID_RE.subn(lambda m: m.group(1) + b"0" * len(m.group(2)), data)
 
 
@@ -67,7 +90,7 @@ def _number(text: str) -> float | None:
 
 
 def analyze_record(record: str) -> dict:
-    """Bir kaydın öğelerini ve tanınan alanlarını çıkarır."""
+    """Splits a record into items and extracts the recognised fields."""
     text = record.strip().lstrip("{").rstrip("}").replace("\r", "").replace("\n", "")
     try:
         tokens = next(csv.reader([text]), [])
@@ -78,10 +101,10 @@ def analyze_record(record: str) -> dict:
 
 
 def compare(analysis: dict, label: str, code: str, value: float) -> dict:
-    """Ekranda okunan değeri kayıttaki öğelerle eşleştirir.
+    """Matches a value read on the display against the items of a record.
 
-    Kayıt anahtar-değer biçiminde olmasa bile değerin hangi sırada geçtiğini
-    bulur; bu, bilinmeyen biçimleri çözmek için yeterli ipucunu verir.
+    Even when the record is not in key-value format this finds the position of
+    the value, which is enough of a hint to decode unknown formats.
     """
     tolerance = 0.051
     positions = [i for i, t in enumerate(analysis["tokens"])
@@ -112,7 +135,7 @@ def system_info() -> dict:
 
 
 def port_details(device: str) -> dict:
-    """USB kimliği gibi cihaz bilgileri. USB seri numarası bilinçli olarak alınmaz."""
+    """Device details such as the USB id. The USB serial number is deliberately left out."""
     if device.lower().startswith("bt:"):
         from .bluetooth import mask_address, parse_bt_port  # noqa: PLC0415
 
@@ -136,9 +159,9 @@ def port_details(device: str) -> dict:
 def capture(port, timeout: float, idle: float = 2.0,
             clock: Callable[[], float] = time.monotonic,
             cancelled: Callable[[], bool] = lambda: False) -> tuple[bytes, list[list[int]]]:
-    """İlk bayt gelene kadar en fazla ``timeout`` saniye bekler; veri geldikten
-    sonra ``idle`` saniye sessizlik olunca biter. Bayt akışını ve her parçanın
-    zamanlamasını (ms, bayt sayısı) döndürür."""
+    """Waits at most ``timeout`` seconds for the first byte; once data arrives it
+    stops after ``idle`` seconds of silence. Returns the byte stream and the
+    timing of every chunk (ms, byte count)."""
     start = clock()
     last = None
     data = bytearray()
@@ -169,7 +192,7 @@ def stream_summary(data: bytes) -> dict:
 
 
 class Wizard:
-    """Soru-cevap akışı. ``ask`` ve ``say`` testlerde değiştirilebilir."""
+    """Question-and-answer flow. ``ask`` and ``say`` can be replaced in tests."""
 
     def __init__(self, ask: Callable[[str], str] = input,
                  say: Callable[[str], None] = print):
@@ -183,12 +206,12 @@ class Wizard:
                 answer = self._ask(f"{question}{suffix}: ").strip()
             except EOFError:
                 if required and not default:
-                    raise SystemExit("Girdi sona erdi, rapor oluşturulmadı.") from None
+                    raise SystemExit(_("Input ended; no report was created.")) from None
                 answer = ""
             answer = answer or default
             if answer or not required:
                 return answer
-            self.say("  Bu bilgi gerekli.")
+            self.say("  " + _("This is required."))
 
     def ask_number(self, question: str) -> float | None:
         while True:
@@ -198,7 +221,7 @@ class Wizard:
             value = _number(answer)
             if value is not None:
                 return value
-            self.say("  Sayı girin (boş bırakmak için Enter).")
+            self.say("  " + _("Enter a number (or press Enter to skip)."))
 
     def choose(self, question: str, options: list[str], default: int = 1) -> int:
         for i, option in enumerate(options, 1):
@@ -207,16 +230,20 @@ class Wizard:
             answer = self.ask(question, str(default))
             if answer.isdigit() and 1 <= int(answer) <= len(options):
                 return int(answer) - 1
-            self.say(f"  1 ile {len(options)} arasında bir sayı girin.")
+            self.say("  " + _("Enter a number between 1 and {count}.").format(
+                count=len(options)))
 
     def yes(self, question: str, default: bool = True) -> bool:
-        answer = self.ask(f"{question} (e/h)", "e" if default else "h").lower()
-        return answer.startswith("e")
+        # TRANSLATORS: the letters for "yes" and "no" in yes/no questions.
+        yes_letter, no_letter = _("y"), _("n")
+        answer = self.ask(f"{question} ({yes_letter}/{no_letter})",
+                          yes_letter if default else no_letter).lower()
+        return answer[:1] in {yes_letter.lower(), "y", "e"}
 
 
 def build_entry(data: bytes, timing: list, source: str) -> tuple[dict, dict | None]:
-    """Bir ölçüm denemesinin rapor kaydını hazırlar. İkinci değer, ekrandaki
-    değerlerin karşılaştırılacağı kayıttır (veri yoksa None)."""
+    """Prepares the report entry of one measurement attempt. The second value is
+    the record that display values are compared with (None without data)."""
     masked, count = mask_subject_ids(data)
     framer = Framer()
     records = framer.feed(masked) + framer.flush()
@@ -230,29 +257,23 @@ def build_entry(data: bytes, timing: list, source: str) -> tuple[dict, dict | No
     return entry, target
 
 
-DEFAULT_SERVER = "https://ldow.duckdns.org/tartim/rapor"
-
-
-SEND_OPTIONS = [
-    ("Proje sunucusuna gönder (hesap gerekmez)", "server"),
-    ("GitHub formuyla kendim göndereceğim", "github"),
-    ("Şimdilik gönderme, dosya bilgisayarımda kalsın", "later"),
-]
-
-
 def report_server() -> str | None:
-    """Rapor sunucusunun adresi. Kurum kendi sunucusunu TARTIM_RAPOR_ADRESI ile
-    verebilir; değişken boş bırakılırsa sunucuya gönderim seçeneği kapanır."""
-    return os.environ.get("TARTIM_RAPOR_ADRESI", DEFAULT_SERVER).strip() or None
+    """Address of the report server. An organisation can set its own server with
+    TARTIM_REPORT_URL; an empty value disables sending to a server."""
+    for variable in ("TARTIM_REPORT_URL", "TARTIM_RAPOR_ADRESI"):  # the latter: before 0.6
+        if variable in os.environ:
+            return os.environ[variable].strip() or None
+    return DEFAULT_SERVER
 
 
 def send_report(report: dict, note: str = "", url: str | None = None, consent: bool = True,
                 timeout: float = 30) -> dict:
-    """Raporu proje sunucusuna HTTPS ile gönderir. Sunucunun yanıtını döndürür;
-    sorun olursa kullanıcıya gösterilecek açıklamayla RuntimeError verir."""
+    """Sends the report to the project server over HTTPS and returns the server's
+    answer; on failure raises RuntimeError with a message for the user."""
     url = url or report_server()
     if not url:
-        raise RuntimeError("Sunucuya gönderim bu kurulumda kapalı (TARTIM_RAPOR_ADRESI boş).")
+        raise RuntimeError(_("Sending to a server is disabled in this installation "
+                             "(TARTIM_REPORT_URL is empty)."))
     data = json.dumps({"report": report, "note": note, "consent": consent},
                       ensure_ascii=False).encode()
     request = urllib.request.Request(
@@ -264,14 +285,17 @@ def send_report(report: dict, note: str = "", url: str | None = None, consent: b
             return json.load(response)
     except urllib.error.HTTPError as exc:
         try:
-            message = json.load(exc).get("error")
+            body = json.load(exc)
         except ValueError:
-            message = None
-        raise RuntimeError(message or f"Sunucu raporu kabul etmedi (HTTP {exc.code}).") from exc
+            body = {}
+        message = SERVER_ERRORS.get(body.get("code"))
+        raise RuntimeError(_(message) if message else body.get("error") or _(
+            "The server did not accept the report (HTTP {status}).").format(status=exc.code)) \
+            from exc
     except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError("Rapor sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edin; "
-                           "rapor dosyası bilgisayarınızda duruyor, daha sonra yeniden "
-                           "gönderebilirsiniz.") from exc
+        raise RuntimeError(_("Could not reach the report server. Check your internet "
+                             "connection; the report file is still on your computer and can "
+                             "be sent later.")) from exc
 
 
 def new_report(device: dict, mode: str) -> dict:
@@ -282,11 +306,18 @@ def new_report(device: dict, mode: str) -> dict:
 
 def save_report(report: dict, output: str | Path | None = None,
                 directory: Path | None = None) -> Path:
-    model = re.sub(r"[^A-Za-z0-9-]+", "", report["device"].get("model", "")) or "cihaz"
-    name = f"tartim-rapor-{model}-{datetime.now():%Y%m%d-%H%M%S}.json"
+    model = re.sub(r"[^A-Za-z0-9-]+", "", report["device"].get("model", "")) or "device"
+    name = f"tartim-report-{model}-{datetime.now():%Y%m%d-%H%M%S}.json"
     path = Path(output) if output else (directory or Path.cwd()) / name
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
+
+
+def _ask_weight(w: Wizard, entry: dict, target: dict) -> None:
+    label, code = SCREEN_FIELDS[0]
+    value = w.ask_number(_("Weight shown on the display (optional)"))
+    if value is not None:
+        entry["screen"].append(compare(target, label, code, value))
 
 
 def _measurement_entry(w: Wizard, data: bytes, timing: list, source: str,
@@ -295,65 +326,65 @@ def _measurement_entry(w: Wizard, data: bytes, timing: list, source: str,
     if target is None:
         return entry
     if not detailed:
-        # Hızlı kip: yalnızca kilo sorulur; kaydı doğrulamak için bu yeterli bir ipucu.
-        label, code = SCREEN_FIELDS[0]
-        value = w.ask_number("Ekranda görünen kilo (boş geçebilirsiniz)")
-        if value is not None:
-            entry["screen"].append(compare(target, label, code, value))
+        # Quick mode: only the weight is asked; that is enough of a hint to verify a record.
+        _ask_weight(w, entry, target)
         return entry
 
     if target["recognized"]:
-        w.say("\nÇözülen değerler:")
+        w.say("\n" + _("Decoded values:"))
         for code, value in target["values"].items():
             if code not in ("CS", "ID"):
-                w.say(f"  {describe(code).label:<38} {value}")
+                w.say(f"  {describe(code).name:<38} {value}")
     else:
-        w.say("\nKayıt bilinen biçimde değil. Ekrandaki değerler biçimi çözmemize yardım edecek.")
-    w.say("\nÖlçümden önce cihaza girdiğiniz bilgiler (bilmiyorsanız boş bırakın):")
+        w.say("\n" + _("The record is not in a known format. The values on the display will "
+                       "help us decode it."))
+    w.say("\n" + _("Values you entered on the device before measuring (leave empty if unsure):"))
     for label, code in INPUT_FIELDS:
-        value = w.ask_number(f"  {label}")
+        value = w.ask_number(f"  {_(label)}")
         if value is not None:
             entry["inputs"].append(compare(target, label, code, value))
-    w.say("\nCihaz ekranında (ya da çıktıda) gördüğünüz sonuçlar (boş bırakılabilir):")
+    w.say("\n" + _("Results shown on the device display or printout (optional):"))
     for label, code in SCREEN_FIELDS:
-        value = w.ask_number(f"  {label}")
+        value = w.ask_number(f"  {_(label)}")
         if value is not None:
             entry["screen"].append(compare(target, label, code, value))
     checks = entry["inputs"] + entry["screen"]
     if checks:
         ok = sum(c["matches_expected"] for c in checks)
-        w.say(f"\nKarşılaştırma: {len(checks)} değerden {ok} tanesi beklenen alanla eşleşti.")
+        w.say("\n" + ngettext("Comparison: {ok} of {count} value matched the expected field.",
+                              "Comparison: {ok} of {count} values matched the expected field.",
+                              len(checks)).format(ok=ok, count=len(checks)))
     return entry
 
 
 def _pick_port(w: Wizard, ports: list[tuple[str, str]], detailed: bool) -> str:
-    """Tek bir USB-seri port varsa (hızlı kipte) onu seçer, yoksa kullanıcıya sorar."""
-    usb = [dev for dev, _ in ports if "ttyUSB" in dev or "ttyACM" in dev]
+    """Picks the only USB-serial port (in quick mode), otherwise asks the user."""
+    usb = [dev for dev, _desc in ports if "ttyUSB" in dev or "ttyACM" in dev]
     if len(usb) == 1 and not detailed:
-        w.say(f"Port: {usb[0]}")
+        w.say(_("Port: {port}").format(port=usb[0]))
         return usb[0]
     if ports:
-        w.say("\nBulunan seri portlar:")
+        w.say("\n" + _("Serial ports found:"))
         for i, (dev, desc) in enumerate(ports, 1):
             w.say(f"  {i}) {dev}  {desc}")
     else:
-        w.say("\nSeri port bulunamadı. Kabloyu takıp 'lsusb' ile kontrol edin.")
-    answer = w.ask("Port (numara ya da yol, ör. /dev/ttyUSB0)", required=True)
+        w.say("\n" + _("No serial port found. Plug in the cable and check with 'lsusb'."))
+    answer = w.ask(_("Port (number or path, e.g. /dev/ttyUSB0)"), required=True)
     if answer.isdigit() and 0 < int(answer) <= len(ports):
         return ports[int(answer) - 1][0]
     return answer
 
 
 def ble_entry(device, result: dict) -> tuple[dict, dict | None]:
-    """BLE yakalamasından rapor kaydı. Bildirimler birleştirilip metin tabanlı
-    protokoller için de çözümlenir; standart tartı verisi varsa o kullanılır."""
+    """Report entry from a BLE capture. The notifications are joined and parsed
+    for text-based protocols too; decoded standard scale data is used if present."""
     from .bluetooth import mask_address, standard_values  # noqa: PLC0415
 
     data = b"".join(bytes.fromhex(n["hex"]) for n in result["notifications"])
     timing = [[n["t_ms"], len(n["hex"]) // 2] for n in result["notifications"]]
     entry, target = build_entry(data, timing, source="bluetooth-le")
     entry["bluetooth"] = {"address": mask_address(device.address), "name": device.name,
-                          "kind": device.kind, "uuids": device.uuids, **result}
+                          "kind": device.kind_code, "uuids": device.uuids, **result}
     values = standard_values(result)
     if values:
         entry["standard_values"] = values
@@ -363,16 +394,16 @@ def ble_entry(device, result: dict) -> tuple[dict, dict | None]:
 
 def _pick_bluetooth(w: Wizard, devices: list) -> object:
     if not devices:
-        raise SystemExit("Bluetooth cihazı bulunamadı. Tartıyı açıp tekrar deneyin.")
-    w.say("\nBulunan Bluetooth cihazları:")
+        raise SystemExit(_("No Bluetooth device found. Turn the scale on and try again."))
+    w.say("\n" + _("Bluetooth devices found:"))
     for i, d in enumerate(devices, 1):
         rssi = f"{d.rssi} dBm" if d.rssi is not None else ""
-        w.say(f"  {i}) {d.name or '(adsız)':<24} {d.kind:<22} {rssi}")
+        w.say(f"  {i}) {d.name or _('(no name)'):<24} {d.kind:<22} {rssi}")
     while True:
-        answer = w.ask("Tartınız hangisi? (numara)", "1", required=True)
+        answer = w.ask(_("Which one is your scale? (number)"), "1", required=True)
         if answer.isdigit() and 0 < int(answer) <= len(devices):
             return devices[int(answer) - 1]
-        w.say(f"  1 ile {len(devices)} arasında bir sayı girin.")
+        w.say("  " + _("Enter a number between 1 and {count}.").format(count=len(devices)))
 
 
 def _bluetooth_measurements(w: Wizard, report: dict, timeout: float, idle: float,
@@ -380,46 +411,48 @@ def _bluetooth_measurements(w: Wizard, report: dict, timeout: float, idle: float
                             port_opener: Callable | None) -> None:
     from . import bluetooth  # noqa: PLC0415
 
-    w.say("\nTartıyı açın. Yakındaki Bluetooth cihazları taranıyor (10 sn)...")
+    w.say("\n" + _("Turn the scale on. Scanning for nearby Bluetooth devices (10 s)..."))
     with (session_factory or bluetooth.BlueZ)() as bz:
         try:
             devices = bluetooth.scan(bz, 10)
         except bluetooth.BluetoothError as exc:
             raise SystemExit(str(exc)) from exc
         device = _pick_bluetooth(w, devices)
-        report["device"]["connection"] = f"bluetooth ({device.kind})"
+        report["device"]["connection"] = f"bluetooth ({device.kind_code})"
         if device.classic_serial:
             from . import serial_io  # noqa: PLC0415
 
             report["port"] = port_details(device.port)
             conn = (port_opener or serial_io.open_port)(serial_io.PortSettings(device.port))
             try:
-                w.say(f"\n{device.name or device.address} bağlandı. Şimdi cihazda ölçüm yapın...")
+                w.say("\n" + _("Connected to {name}. Take a measurement on the device now...")
+                      .format(name=device.name or device.address))
                 data, timing = capture(conn, timeout, idle)
             finally:
                 conn.close()
-            w.say(f"Veri alındı ({len(data)} bayt)." if data else "Hiç veri gelmedi.")
+            w.say(_("Data received ({count} bytes).").format(count=len(data)) if data
+                  else _("No data received."))
             report["measurements"].append(_measurement_entry(
                 w, data, timing, source="bluetooth-rfcomm", detailed=detailed))
             return
-        w.say(f"\n{device.name or 'Cihaz'} ile bağlantı kuruluyor...")
+        w.say("\n" + _("Connecting to {name}...").format(name=device.name or _("the device")))
         try:
             result = bluetooth.capture_ble(
                 bz, device, timeout=timeout, idle=idle,
-                on_connected=lambda: w.say(f"Bağlandı. Şimdi cihazda ölçüm yapın "
-                                           f"(en fazla {timeout:g} sn)..."))
+                on_connected=lambda: w.say(_("Connected. Take a measurement on the device now "
+                                             "(waiting up to {seconds} s)...").format(
+                                                 seconds=f"{timeout:g}")))
         except bluetooth.BluetoothError as exc:
             raise SystemExit(str(exc)) from exc
     count = len(result["notifications"])
-    w.say(f"{count} Bluetooth bildirimi alındı." if count else
-          "Hiç bildirim gelmedi. Bu cihaz, veri göndermeden önce uygulamadan komut bekliyor "
-          "olabilir; rapor yine de cihazın servis yapısını içeriyor.")
+    w.say(ngettext("{count} Bluetooth notification received.",
+                   "{count} Bluetooth notifications received.", count).format(count=count)
+          if count else
+          _("No notifications arrived. The device may be waiting for a command from its app "
+            "before sending data; the report still contains its service structure."))
     entry, target = ble_entry(device, result)
     if target is not None:
-        label, code = SCREEN_FIELDS[0]
-        value = w.ask_number("Ekranda görünen kilo (boş geçebilirsiniz)")
-        if value is not None:
-            entry["screen"].append(compare(target, label, code, value))
+        _ask_weight(w, entry, target)
     report["measurements"].append(entry)
 
 
@@ -429,28 +462,28 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
                files: list[str] | None = None, detailed: bool = False,
                ports: list[tuple[str, str]] | None = None, bluetooth: bool = False,
                bt_session: Callable | None = None, send: Callable | None = None) -> Path:
-    """``send`` verilirse (ör. ``send_report``) rapor kaydedildikten sonra
-    kullanıcının onayıyla proje sunucusuna gönderilir."""
-    w.say("=== tartim cihaz raporu ===\n"
-          "Cihazınızın veri biçimini öğrenmemiz için bir rapor dosyası hazırlanacak.\n"
-          "Danışan numarası maskelenir. Ölçümü kendinizle ya da bir test kişisiyle yapın.\n")
+    """If ``send`` is given (e.g. ``send_report``) the user is offered to send the
+    report after it has been saved."""
+    w.say(_("=== tartim device report ===") + "\n" +
+          _("A report file will be prepared so that we can learn your device's data format.") +
+          "\n" + _("The client number is masked. Measure yourself or a test person.") + "\n")
 
     device = {"brand": "Tanita",
-              "model": w.ask("Cihaz modeli (etikette yazar, ör. MC-780MA)", required=True)}
+              "model": w.ask(_("Device model (on the label, e.g. MC-780MA)"), required=True)}
     if detailed:
-        device["brand"] = w.ask("Marka", "Tanita")
-        device["software_version"] = w.ask("Cihaz yazılım sürümü (biliyorsanız)")
+        device["brand"] = w.ask(_("Brand"), "Tanita")
+        device["software_version"] = w.ask(_("Device software version (if known)"))
         device["output_setting"] = w.ask(
-            "PC veri çıkış ayarı (biliyorsanız, ör. 'varsayılan' ya da 'BC-418')")
+            _("PC data output setting (if known, e.g. 'default' or 'BC-418')"))
         if not files and not port and not bluetooth:
-            w.say("\nBağlantı türü:")
-            choice = w.choose("Seçiminiz", CONNECTIONS)
+            w.say("\n" + _("Connection type:"))
+            choice = w.choose(_("Your choice"), [_(c) for c in CONNECTIONS])
             if choice == 2:
-                files = [w.ask("SD karttaki dosyanın yolu", required=True)]
+                files = [w.ask(_("Path of the file on the SD card"), required=True)]
             bluetooth = choice == 3
-    device["connection"] = "SD kart dosyası" if files else "seri port"
+    device["connection"] = "sd-card-file" if files else "serial-port"
 
-    report = new_report(device, "ayrintili" if detailed else "hizli")
+    report = new_report(device, "detailed" if detailed else "quick")
 
     if bluetooth:
         _bluetooth_measurements(w, report, timeout, idle, detailed, bt_session, port_opener)
@@ -459,97 +492,99 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
             try:
                 data = Path(path).read_bytes()[:256 * 1024]
             except OSError as exc:
-                w.say(f"{path} okunamadı: {exc}")
+                w.say(_("Could not read {path}: {error}").format(path=path, error=exc))
                 continue
-            w.say(f"{Path(path).name} okundu.")
+            w.say(_("{name} read.").format(name=Path(path).name))
             report["measurements"].append(_measurement_entry(
-                w, data, [], source=f"dosya:{Path(path).name}", detailed=detailed))
+                w, data, [], source=f"file:{Path(path).name}", detailed=detailed))
     else:
         from . import serial_io  # noqa: PLC0415
 
         if not port:
             port = _pick_port(w, serial_io.list_ports() if ports is None else ports, detailed)
         if not baud:
-            baud = int(w.ask("Baud hızı", "9600")) if detailed else 9600
+            baud = int(w.ask(_("Baud rate"), "9600")) if detailed else 9600
         settings = serial_io.PortSettings(port, baud)
         report["port"] = {**port_details(port), "baudrate": baud, "bytesize": settings.bytesize,
                           "parity": settings.parity, "stopbits": settings.stopbits}
-        count = int(w.ask("Kaç ölçüm kaydedilsin?", "1")) if detailed else 1
+        count = int(w.ask(_("How many measurements should be recorded?"), "1")) if detailed else 1
         conn = (port_opener or serial_io.open_port)(settings)
         try:
             for i in range(count):
                 prefix = f"[{i + 1}/{count}] " if count > 1 else ""
-                w.say(f"\n{prefix}Şimdi cihazda ölçüm yapın. "
-                      f"Bekleniyor (en fazla {timeout:g} sn)...")
+                w.say("\n" + prefix + _("Take a measurement on the device now. Waiting (up to "
+                                        "{seconds} s)...").format(seconds=f"{timeout:g}"))
                 data, timing = capture(conn, timeout, idle)
                 if data:
-                    w.say(f"Veri alındı ({len(data)} bayt).")
+                    w.say(_("Data received ({count} bytes).").format(count=len(data)))
                 else:
-                    w.say("Hiç veri gelmedi. Kabloyu ve cihazın PC çıkış ayarını kontrol edin.\n"
-                          "Farklı bir hız denemek için: tartim rapor --baud 19200")
+                    w.say(_("No data received. Check the cable and the device's PC output "
+                            "setting.") + "\n" +
+                          _("To try another speed: tartim report --baud 19200"))
                 report["measurements"].append(_measurement_entry(
-                    w, data, timing, source=f"seri:{port}", detailed=detailed))
+                    w, data, timing, source=f"serial:{port}", detailed=detailed))
         finally:
             conn.close()
 
     if detailed:
-        report["notes"] = w.ask("\nEklemek istediğiniz not (sorunlar, cihaz ayarları vb.)")
+        report["notes"] = w.ask("\n" + _("Anything you want to add (problems, device settings "
+                                         "etc.)"))
     path = save_report(report, output)
-    w.say(f"\nRapor kaydedildi: {path.resolve()}")
+    w.say("\n" + _("Report saved: {path}").format(path=path.resolve()))
     if send is None:
         return path
     options = SEND_OPTIONS if report_server() else SEND_OPTIONS[1:]
-    w.say("\nRaporu nasıl göndermek istersiniz?")
-    choice = options[w.choose("Seçiminiz", [label for label, _ in options])][1]
+    w.say("\n" + _("How would you like to send the report?"))
+    choice = options[w.choose(_("Your choice"), [_(label) for label, _key in options])][1]
     if choice == "server":
-        if not w.yes("Bu ölçüm gerçek bir danışana değil, size ya da bir test kişisine mi ait?",
-                     default=False):
-            w.say("Gerçek danışan ölçümleri gönderilmez. Lütfen kendinizle ya da bir test "
-                  "kişisiyle yeni bir ölçüm yapın.")
+        if not w.yes(_("Does this measurement belong to you or a test person (not a real "
+                       "client)?"), default=False):
+            w.say(_("Measurements of real clients are not sent. Please take a new measurement "
+                    "of yourself or a test person."))
             return path
-        note = report.get("notes") or w.ask("Eklemek istediğiniz kısa bir not (isteğe bağlı)")
+        note = report.get("notes") or w.ask(_("A short note (optional)"))
         try:
             result = send(report, note=note)
         except RuntimeError as exc:
-            w.say(f"Gönderilemedi: {exc}\nDaha sonra yeniden denemek için: "
-                  f"tartim rapor-gonder {path}")
+            w.say(_("Could not send: {error}").format(error=exc) + "\n" +
+                  _("To try again later: tartim send-report {path}").format(path=path))
         else:
-            w.say(f"Gönderildi, teşekkürler! Rapor numaranız: {result.get('id')}")
+            w.say(_("Sent, thank you! Your report number: {id}").format(id=result.get("id")))
     elif choice == "github":
-        w.say(f"Şu adresteki formu açın, dosyayı 'Rapor dosyası' kutusuna sürükleyin:\n"
-              f"{REPORT_FORM_URL}")
+        w.say(_("Open the form at this address and drag the file into the “Report file” box:")
+              + f"\n{REPORT_FORM_URL}")
     else:
-        w.say(f"Rapor bilgisayarınızda kaldı. Daha sonra göndermek için:\n"
-              f"  tartim rapor-gonder {path}\n"
-              f"ya da dosyayı GitHub formuyla gönderin: {REPORT_FORM_URL}")
+        w.say(_("The report stays on your computer. To send it later:") +
+              f"\n  tartim send-report {path}\n" +
+              _("or send the file with the GitHub form: {url}").format(url=REPORT_FORM_URL))
     return path
 
 
 def send_saved(path: str, note: str = "", w: Wizard | None = None) -> int:
-    """Daha önce kaydedilmiş bir rapor dosyasını sunucuya gönderir."""
+    """Sends a previously saved report file to the server."""
     w = w or Wizard()
     try:
         report = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise SystemExit(f"Rapor dosyası okunamadı: {exc}") from exc
-    if not w.yes("Bu ölçüm gerçek bir danışana değil, size ya da bir test kişisine mi ait?",
+        raise SystemExit(_("Could not read the report file: {error}").format(error=exc)) from exc
+    if not w.yes(_("Does this measurement belong to you or a test person (not a real client)?"),
                  default=False):
-        w.say("Gerçek danışan ölçümleri gönderilmez.")
+        w.say(_("Measurements of real clients are not sent."))
         return 1
     try:
         result = send_report(report, note=note)
     except RuntimeError as exc:
-        raise SystemExit(f"Gönderilemedi: {exc}") from exc
-    w.say(f"Gönderildi, teşekkürler! Rapor numaranız: {result.get('id')}")
+        raise SystemExit(_("Could not send: {error}").format(error=exc)) from exc
+    w.say(_("Sent, thank you! Your report number: {id}").format(id=result.get("id")))
     return 0
 
 
 def main_from_args(args) -> int:
     try:
-        run_wizard(Wizard(), port=args.port, baud=args.baud, timeout=args.sure,
-                   output=args.cikti, files=args.dosya, detailed=args.ayrintili,
-                   bluetooth=args.bluetooth, send=None if args.gonderme else send_report)
+        run_wizard(Wizard(), port=args.port, baud=args.baud, timeout=args.timeout,
+                   output=args.output, files=args.file, detailed=args.detailed,
+                   bluetooth=args.bluetooth, send=None if args.no_send else send_report)
     except KeyboardInterrupt:
-        print("\nİptal edildi, rapor oluşturulmadı.", file=sys.stderr)
+        print("\n" + _("Cancelled; no report was created."), file=sys.stderr)
         return 130
     return 0

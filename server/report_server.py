@@ -1,15 +1,18 @@
-"""Tartım cihaz raporu sunucusu.
+"""Tartım device report server.
 
-Uygulamadan gelen cihaz raporlarını alır, denetler, diske kaydeder ve GitHub'daki
-özel bir depoda kayıt (issue) olarak açar. Yalnızca Python standart kütüphanesi
-kullanılır.
+Receives device reports from the application, validates them, stores them on
+disk and opens them as issues in a private GitHub repository. Uses only the
+Python standard library.
 
-GitHub erişim anahtarı kodda ya da depoda bulunmaz. systemd ``LoadCredential``
-ile verilir (``$CREDENTIALS_DIRECTORY/github-token``); bkz. server/KURULUM.md.
-Anahtar yoksa raporlar yalnızca diske kaydedilir ve anahtar eklendiğinde
-sırayla iletilir.
+The GitHub access token is never in the code or the repository. systemd passes
+it with ``LoadCredential`` (``$CREDENTIALS_DIRECTORY/github-token``); see
+server/INSTALL.md. Without a token reports are only stored and are forwarded
+once a token is added.
 
-    python3 tartim_rapor_sunucusu.py --port 8095 --veri /var/lib/tartim-rapor
+Errors are returned as ``{"ok": false, "code": "...", "error": "..."}``; the
+application shows a translated message for the ``code``.
+
+    python3 report_server.py --port 8095 --data /var/lib/tartim-rapor
 """
 
 from __future__ import annotations
@@ -33,41 +36,47 @@ from pathlib import Path
 MAX_BODY = 2 * 1024 * 1024
 MAX_MEASUREMENTS = 10
 MAX_NOTE = 2000
-ISSUE_JSON_LIMIT = 60000  # GitHub issue gövdesi en fazla 65536 karakter
+ISSUE_JSON_LIMIT = 60000  # a GitHub issue body is at most 65536 characters
 PER_IP_HOURLY = 5
 GLOBAL_DAILY = 200
-MAX_PENDING = 500  # iletilmeyi bekleyen rapor sınırı: diski doldurma saldırısına karşı
+MAX_PENDING = 500  # reports waiting to be forwarded: protects against filling the disk
 
-log = logging.getLogger("tartim-rapor")
+# The Turkish paths are used by releases before 0.6 and keep working.
+REPORT_PATHS = ("/tartim/report", "/tartim/rapor")
+HEALTH_PATHS = ("/tartim/health", "/tartim/saglik")
+
+log = logging.getLogger("tartim-report")
 
 
 class Rejected(Exception):
-    def __init__(self, status: HTTPStatus, message: str):
+    def __init__(self, status: HTTPStatus, code: str, message: str):
         super().__init__(message)
         self.status = status
+        self.code = code
         self.message = message
 
 
 def validate(payload: object) -> dict:
-    """Gelen isteği denetler; geçerliyse saklanacak kaydı döndürür."""
+    """Validates a request; returns the record to store if it is valid."""
     if not isinstance(payload, dict):
-        raise Rejected(HTTPStatus.BAD_REQUEST, "Geçersiz istek.")
+        raise Rejected(HTTPStatus.BAD_REQUEST, "invalid-request", "Invalid request.")
     if payload.get("consent") is not True:
-        raise Rejected(HTTPStatus.BAD_REQUEST,
-                       "Ölçümün gerçek bir danışana ait olmadığını onaylamanız gerekir.")
+        raise Rejected(HTTPStatus.BAD_REQUEST, "consent-required",
+                       "You must confirm that the measurement does not belong to a real client.")
     report = payload.get("report")
     if not isinstance(report, dict) or report.get("schema") != 1:
-        raise Rejected(HTTPStatus.BAD_REQUEST, "Rapor biçimi tanınmadı.")
+        raise Rejected(HTTPStatus.BAD_REQUEST, "unknown-format", "Unknown report format.")
     device = report.get("device")
     if not isinstance(device, dict) or not isinstance(device.get("model"), str) \
             or not 0 < len(device["model"].strip()) <= 64:
-        raise Rejected(HTTPStatus.BAD_REQUEST, "Cihaz modeli eksik.")
+        raise Rejected(HTTPStatus.BAD_REQUEST, "model-missing", "The device model is missing.")
     measurements = report.get("measurements")
     if not isinstance(measurements, list) or len(measurements) > MAX_MEASUREMENTS:
-        raise Rejected(HTTPStatus.BAD_REQUEST, "Ölçüm listesi geçersiz.")
+        raise Rejected(HTTPStatus.BAD_REQUEST, "measurements-invalid",
+                       "The measurement list is not valid.")
     note = payload.get("note") or ""
     if not isinstance(note, str):
-        raise Rejected(HTTPStatus.BAD_REQUEST, "Not metin olmalı.")
+        raise Rejected(HTTPStatus.BAD_REQUEST, "note-invalid", "The note must be text.")
     return {"report": report, "note": note[:MAX_NOTE]}
 
 
@@ -95,14 +104,22 @@ class RateLimiter:
 
 
 class Store:
-    """Raporlar: ``gelen/`` (iletilecek) ve ``iletildi/`` klasörlerinde, 0600 izinle."""
+    """Reports live in ``incoming/`` (to forward) and ``sent/``, with 0600 permissions."""
+
+    LEGACY_DIRS = {"gelen": "incoming", "iletildi": "sent"}  # names before 0.6
 
     def __init__(self, root: Path):
-        self.incoming = root / "gelen"
-        self.sent = root / "iletildi"
+        self.incoming = root / "incoming"
+        self.sent = root / "sent"
         for d in (self.incoming, self.sent):
             d.mkdir(parents=True, exist_ok=True)
             os.chmod(d, 0o700)
+        for old, new in self.LEGACY_DIRS.items():
+            legacy = root / old
+            if legacy.is_dir():
+                for path in legacy.glob("*.json"):
+                    path.rename(root / new / path.name)
+                legacy.rmdir()
 
     def save(self, record: dict) -> str:
         rid = f"{datetime.now(timezone.utc):%Y%m%d-%H%M%S}-{secrets.token_hex(3)}"
@@ -115,7 +132,7 @@ class Store:
         return rid
 
     def full(self) -> bool:
-        return sum(1 for _ in self.incoming.glob("*.json")) >= MAX_PENDING
+        return sum(1 for _path in self.incoming.glob("*.json")) >= MAX_PENDING
 
     def pending(self) -> list[Path]:
         return sorted(self.incoming.glob("*.json"))
@@ -131,7 +148,7 @@ class Store:
 
 
 def _fence(text: str) -> str:
-    """İçerikteki en uzun ` dizisinden uzun bir kod bloğu çiti (Markdown kaçışı)."""
+    """A code fence longer than the longest run of ` in the content (Markdown escaping)."""
     longest = max((len(m) for m in re.findall(r"`+", text)), default=0)
     return "`" * max(3, longest + 1)
 
@@ -145,32 +162,32 @@ def issue_for(record: dict) -> tuple[str, str]:
     checks = [c for m in measurements for c in m.get("screen", []) + m.get("inputs", [])]
     matched = sum(1 for c in checks if c.get("matches_expected"))
     notes = sum(len(m.get("bluetooth", {}).get("notifications", [])) for m in measurements)
-    # Başlık GitHub'da Markdown olarak işlenmez ama yine de yalnızca güvenli karakterler.
+    # GitHub does not render titles as Markdown, but keep to safe characters anyway.
     model = re.sub(r"[^\w .()+/-]", "", str(device.get("model", "?")))[:64] or "?"
-    title = f"Cihaz raporu: {model} ({record['id']})"
+    title = f"Device report: {model} ({record['id']})"
     rows = [
         ("Model", model),
-        ("Bağlantı", device.get("connection", "?")),
-        ("Rapor kipi", report.get("mode", "?")),
-        ("Sistem", f"{system.get('os', '?')} · tartim {system.get('tartim', '?')}"),
-        ("Ölçüm denemesi", len(measurements)),
-        ("Tanınan kayıt", recognized),
-        ("Ekran karşılaştırması", f"{matched}/{len(checks)} eşleşti" if checks else "yok"),
-        ("Bluetooth bildirimi", notes),
+        ("Connection", device.get("connection", "?")),
+        ("Report mode", report.get("mode", "?")),
+        ("System", f"{system.get('os', '?')} · tartim {system.get('tartim', '?')}"),
+        ("Measurement attempts", len(measurements)),
+        ("Recognized records", recognized),
+        ("Display comparison", f"{matched}/{len(checks)} matched" if checks else "none"),
+        ("Bluetooth notifications", notes),
     ]
     table = "\n".join(f"| {k} | {str(v).replace('|', '/')} |" for k, v in rows)
-    body = [f"Rapor sunucusundan otomatik açıldı. Rapor no: `{record['id']}`\n",
+    body = [f"Opened automatically by the report server. Report id: `{record['id']}`\n",
             "| | |\n|---|---|", table, ""]
     if record.get("note"):
         fence = _fence(record["note"])
-        body += ["**Kullanıcının notu:**", f"{fence}text", record["note"], fence, ""]
+        body += ["**Note from the user:**", f"{fence}text", record["note"], fence, ""]
     data = json.dumps(report, ensure_ascii=False, indent=1)
     if len(data) > ISSUE_JSON_LIMIT:
-        body.append(f"Rapor {len(data)} karakter; tamamı sunucuda saklanıyor "
-                    f"(`iletildi/{record['id']}.json`). İlk kısım:")
+        body.append(f"The report has {len(data)} characters; the full report is stored on the "
+                    f"server (`sent/{record['id']}.json`). First part:")
         data = data[:ISSUE_JSON_LIMIT] + "\n…"
     fence = _fence(data)
-    body += ["<details><summary>Rapor (JSON)</summary>\n", f"{fence}json", data, fence,
+    body += ["<details><summary>Report (JSON)</summary>\n", f"{fence}json", data, fence,
              "</details>"]
     return title, "\n".join(body)
 
@@ -186,7 +203,7 @@ class GitHub:
             headers={"Authorization": f"Bearer {self.token}",
                      "Accept": "application/vnd.github+json",
                      "X-GitHub-Api-Version": "2022-11-28",
-                     "User-Agent": "tartim-rapor-sunucusu"},
+                     "User-Agent": "tartim-report-server"},
             method="POST")
         with urllib.request.urlopen(request, timeout=30) as response:
             return json.load(response)["html_url"]
@@ -204,7 +221,7 @@ def read_token() -> str | None:
 
 
 def forward_pending(store: Store, github: GitHub | None) -> int:
-    """Bekleyen raporları GitHub'a iletir; iletilen sayısını döndürür."""
+    """Forwards pending reports to GitHub; returns how many were forwarded."""
     if github is None:
         return 0
     sent = 0
@@ -213,22 +230,27 @@ def forward_pending(store: Store, github: GitHub | None) -> int:
             record = json.loads(path.read_text(encoding="utf-8"))
             url = github.create_issue(*issue_for(record))
         except urllib.error.HTTPError as exc:
-            log.warning("GitHub'a iletilemedi (%s): HTTP %s", path.name, exc.code)
+            log.warning("Could not forward to GitHub (%s): HTTP %s", path.name, exc.code)
             if exc.code in (401, 403, 404):
-                break  # anahtar ya da depo sorunu: sonraki turda yeniden dene
+                break  # token or repository problem: try again next round
             continue
         except (OSError, ValueError) as exc:
-            log.warning("GitHub'a iletilemedi (%s): %s", path.name, exc)
+            log.warning("Could not forward to GitHub (%s): %s", path.name, exc)
             break
         store.mark_sent(path, url)
-        log.info("Rapor iletildi: %s", path.stem)
+        log.info("Report forwarded: %s", path.stem)
         sent += 1
     return sent
 
 
+def _matches(path: str, candidates: tuple[str, ...]) -> bool:
+    path = path.split("?", 1)[0].rstrip("/")
+    return any(path.endswith(c) for c in candidates)
+
+
 def make_handler(store: Store, limiter: RateLimiter, on_saved):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "tartim-rapor"
+        server_version = "tartim-report"
         sys_version = ""
 
         def _reply(self, status: HTTPStatus, payload: dict) -> None:
@@ -239,39 +261,46 @@ def make_handler(store: Store, limiter: RateLimiter, on_saved):
             self.end_headers()
             self.wfile.write(data)
 
-        def log_message(self, fmt, *args):  # içerik ve IP günlüğe yazılmaz
+        def _not_found(self) -> None:
+            self._reply(HTTPStatus.NOT_FOUND, {"ok": False, "code": "not-found",
+                                               "error": "Not found."})
+
+        def log_message(self, fmt, *args):  # neither content nor IP addresses are logged
             log.debug("%s %s", self.command, self.path)
 
         def do_GET(self):
-            if self.path.rstrip("/").endswith("/tartim/saglik"):
+            if _matches(self.path, HEALTH_PATHS):
                 self._reply(HTTPStatus.OK, {"ok": True})
             else:
-                self._reply(HTTPStatus.NOT_FOUND, {"ok": False, "error": "Bulunamadı."})
+                self._not_found()
 
         def do_POST(self):
-            if not self.path.rstrip("/").endswith("/tartim/rapor"):
-                return self._reply(HTTPStatus.NOT_FOUND, {"ok": False, "error": "Bulunamadı."})
+            if not _matches(self.path, REPORT_PATHS):
+                return self._not_found()
             try:
                 length = int(self.headers.get("Content-Length") or 0)
                 if not 0 < length <= MAX_BODY:
-                    raise Rejected(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Rapor çok büyük.")
-                # nginx arkasında: istemci adresi X-Real-IP başlığında.
+                    raise Rejected(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "too-large",
+                                   "The report is too large.")
+                # Behind nginx: the client address is in the X-Real-IP header.
                 ip = self.headers.get("X-Real-IP") or self.client_address[0]
                 if not limiter.allow(ip):
-                    raise Rejected(HTTPStatus.TOO_MANY_REQUESTS,
-                                   "Çok fazla rapor gönderildi, lütfen daha sonra deneyin.")
+                    raise Rejected(HTTPStatus.TOO_MANY_REQUESTS, "rate-limited",
+                                   "Too many reports; please try again later.")
                 try:
                     payload = json.loads(self.rfile.read(length))
                 except ValueError:
-                    raise Rejected(HTTPStatus.BAD_REQUEST, "Rapor okunamadı.") from None
+                    raise Rejected(HTTPStatus.BAD_REQUEST, "unreadable",
+                                   "The report could not be read.") from None
                 record = validate(payload)
                 if store.full():
-                    raise Rejected(HTTPStatus.SERVICE_UNAVAILABLE,
-                                   "Sunucu şu an rapor kabul etmiyor, lütfen daha sonra deneyin.")
+                    raise Rejected(HTTPStatus.SERVICE_UNAVAILABLE, "server-full",
+                                   "The server is not accepting reports right now.")
                 rid = store.save(record)
             except Rejected as exc:
-                return self._reply(exc.status, {"ok": False, "error": exc.message})
-            log.info("Rapor alındı: %s", rid)
+                return self._reply(exc.status, {"ok": False, "code": exc.code,
+                                                "error": exc.message})
+            log.info("Report received: %s", rid)
             on_saved()
             self._reply(HTTPStatus.CREATED, {"ok": True, "id": rid})
 
@@ -279,33 +308,34 @@ def make_handler(store: Store, limiter: RateLimiter, on_saved):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Tartım cihaz raporu sunucusu")
-    parser.add_argument("--adres", default="127.0.0.1")
+    parser = argparse.ArgumentParser(description="Tartım device report server")
+    parser.add_argument("--address", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8095)
-    parser.add_argument("--veri", default=os.environ.get("STATE_DIRECTORY", "./rapor-verisi"))
-    parser.add_argument("--depo", default=os.environ.get("TARTIM_GITHUB_REPO",
+    parser.add_argument("--data", default=os.environ.get("STATE_DIRECTORY", "./report-data"))
+    parser.add_argument("--repo", default=os.environ.get("TARTIM_GITHUB_REPO",
                                                          "muratGursel/tartim-raporlar"))
-    parser.add_argument("--aralik", type=float, default=60, help="GitHub'a iletme aralığı, sn")
+    parser.add_argument("--interval", type=float, default=60,
+                        help="How often to forward to GitHub, seconds")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    store = Store(Path(args.veri))
+    store = Store(Path(args.data))
     token = read_token()
-    github = GitHub(args.depo, token) if token else None
-    log.info("GitHub iletimi: %s", f"açık ({args.depo})" if github else
-             "kapalı (anahtar yok; raporlar yalnızca diske kaydediliyor)")
+    github = GitHub(args.repo, token) if token else None
+    log.info("GitHub forwarding: %s", f"on ({args.repo})" if github else
+             "off (no token; reports are only stored on disk)")
     wake = threading.Event()
 
     def forwarder():
         while True:
             forward_pending(store, github)
-            wake.wait(args.aralik)
+            wake.wait(args.interval)
             wake.clear()
 
     threading.Thread(target=forwarder, daemon=True).start()
-    server = ThreadingHTTPServer((args.adres, args.port),
+    server = ThreadingHTTPServer((args.address, args.port),
                                  make_handler(store, RateLimiter(), wake.set))
-    log.info("Dinleniyor: %s:%s", args.adres, args.port)
+    log.info("Listening on %s:%s", args.address, args.port)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

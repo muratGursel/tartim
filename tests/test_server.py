@@ -12,7 +12,7 @@ from pathlib import Path
 from tartim.report import send_report
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location("srv", ROOT / "server/tartim_rapor_sunucusu.py")
+spec = importlib.util.spec_from_file_location("srv", ROOT / "server/report_server.py")
 srv = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(srv)
 
@@ -45,7 +45,7 @@ class ValidationTests(unittest.TestCase):
         limiter = srv.RateLimiter(per_ip_hourly=2, global_daily=3, clock=lambda: now[0])
         self.assertEqual([limiter.allow("a") for _ in range(3)], [True, True, False])
         self.assertTrue(limiter.allow("b"))
-        self.assertFalse(limiter.allow("c"))  # günlük toplam sınır
+        self.assertFalse(limiter.allow("c"))  # daily total limit
         now[0] = 90000
         self.assertTrue(limiter.allow("a"))
 
@@ -54,20 +54,20 @@ class IssueTests(unittest.TestCase):
     def test_issue_body_escapes_note_and_summarises(self):
         title, body = srv.issue_for({"id": "20261016-1", "report": REPORT,
                                      "note": "```\n@biri <script> ```` dene"})
-        self.assertEqual(title, "Cihaz raporu: MC-780MA (20261016-1)")
-        self.assertIn("| Ekran karşılaştırması | 1/1 eşleşti |", body)
-        self.assertIn("`````text", body)  # nottaki en uzun çitten uzun
+        self.assertEqual(title, "Device report: MC-780MA (20261016-1)")
+        self.assertIn("| Display comparison | 1/1 matched |", body)
+        self.assertIn("`````text", body)  # longer than the longest fence in the note
         self.assertIn('"model": "MC-780MA"', body)
 
     def test_title_is_sanitised(self):
         rec = {"id": "x", "note": "", "report": {**REPORT, "device": {"model": "MC-780 [x](y) @z\n"}}}
-        self.assertEqual(srv.issue_for(rec)[0], "Cihaz raporu: MC-780 x(y) z (x)")
+        self.assertEqual(srv.issue_for(rec)[0], "Device report: MC-780 x(y) z (x)")
 
     def test_large_report_is_truncated(self):
         big = {**REPORT, "measurements": [{"raw_hex": "ab" * 40000}]}
         _, body = srv.issue_for({"id": "x", "report": big, "note": ""})
         self.assertLess(len(body), 65536)
-        self.assertIn("tamamı sunucuda saklanıyor", body)
+        self.assertIn("the full report is stored on the", body)
 
 
 class FakeGitHub(BaseHTTPRequestHandler):
@@ -100,7 +100,7 @@ class EndToEndTests(unittest.TestCase):
         self.saved = threading.Event()
         self.httpd, self.base = serve(srv.make_handler(self.store, srv.RateLimiter(per_ip_hourly=3),
                                                        self.saved.set))
-        self.url = f"{self.base}/tartim/rapor"
+        self.url = f"{self.base}/tartim/report"
         FakeGitHub.issues, FakeGitHub.status = [], 201
 
     def tearDown(self):
@@ -117,7 +117,7 @@ class EndToEndTests(unittest.TestCase):
         if os.name == "posix":
             self.assertEqual(pending[0].stat().st_mode & 0o777, 0o600)
 
-        # Anahtar yoksa iletilmez, rapor beklemede kalır.
+        # Without a token nothing is forwarded and the report waits.
         self.assertEqual(srv.forward_pending(self.store, None), 0)
         gh_server, gh_url = serve(FakeGitHub)
         try:
@@ -148,13 +148,13 @@ class EndToEndTests(unittest.TestCase):
     def test_server_errors_reach_the_app(self):
         with self.assertRaises(RuntimeError) as ctx:
             send_report(REPORT, url=self.url, consent=False)
-        self.assertIn("onaylamanız", str(ctx.exception))
-        # Reddedilen deneme de sınıra sayılır (sınır: saatte 3).
+        self.assertIn("must confirm", str(ctx.exception))
+        # A rejected attempt counts towards the limit too (limit: 3 per hour).
         for _ in range(2):
             send_report(REPORT, url=self.url)
         with self.assertRaises(RuntimeError) as ctx:
             send_report(REPORT, url=self.url)
-        self.assertIn("Çok fazla", str(ctx.exception))
+        self.assertIn("Too many", str(ctx.exception))
 
     def test_full_store_rejects(self):
         original = srv.MAX_PENDING
@@ -163,21 +163,43 @@ class EndToEndTests(unittest.TestCase):
             send_report(REPORT, url=self.url)
             with self.assertRaises(RuntimeError) as ctx:
                 send_report(REPORT, url=self.url)
-            self.assertIn("kabul etmiyor", str(ctx.exception))
+            self.assertIn("not accepting", str(ctx.exception))
         finally:
             srv.MAX_PENDING = original
 
     def test_health_and_unknown_paths(self):
-        with urllib.request.urlopen(f"{self.base}/tartim/saglik", timeout=5) as r:
+        with urllib.request.urlopen(f"{self.base}/tartim/health", timeout=5) as r:
             self.assertEqual(json.load(r), {"ok": True})
         with self.assertRaises(urllib.error.HTTPError) as ctx:
             urllib.request.urlopen(f"{self.base}/baska", timeout=5)
         self.assertEqual(ctx.exception.code, 404)
 
+    def test_legacy_path_and_translated_errors(self):
+        from tartim import i18n
+
+        legacy = f"{self.base}/tartim/rapor"  # used by releases before 0.6
+        self.assertTrue(send_report(REPORT, url=legacy)["ok"])
+        i18n.setup("tr")
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                send_report(REPORT, url=legacy, consent=False)
+        finally:
+            i18n.setup("en")
+        # The server answers in English with a code; the app shows it in Turkish.
+        self.assertIn("onaylamanız gerekir", str(ctx.exception))
+
+    def test_legacy_directories_are_migrated(self):
+        root = Path(self.tmp.name) / "old"
+        (root / "gelen").mkdir(parents=True)
+        (root / "gelen" / "a.json").write_text("{}", encoding="utf-8")
+        store = srv.Store(root)
+        self.assertEqual([p.name for p in store.pending()], ["a.json"])
+        self.assertFalse((root / "gelen").exists())
+
     def test_unreachable_server(self):
         with self.assertRaises(RuntimeError) as ctx:
-            send_report(REPORT, url="http://127.0.0.1:9/tartim/rapor", timeout=2)
-        self.assertIn("ulaşılamadı", str(ctx.exception))
+            send_report(REPORT, url="http://127.0.0.1:9/tartim/report", timeout=2)
+        self.assertIn("Could not reach", str(ctx.exception))
 
 
 if __name__ == "__main__":

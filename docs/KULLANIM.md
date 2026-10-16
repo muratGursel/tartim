@@ -1,6 +1,6 @@
 # Tartım Kullanım Kılavuzu
 
-📄 **[Bu kılavuzu PDF olarak indirin](Tartim-Kullanim-Kilavuzu.pdf)** (yazdırmak için)
+📄 **[Bu kılavuzu PDF olarak indirin](Tartim-Kullanim-Kilavuzu.pdf)** (yazdırmak için) · [English](USER_GUIDE.md)
 
 > Kılavuzdaki ekran görüntülerinde örnek (sentetik) ölçümler ve örnek
 > Bluetooth cihazları kullanılmıştır; hiçbiri gerçek bir kişiye ait değildir.
@@ -50,7 +50,7 @@ işlem biriminizden destek isteyin.
 
 Uygulama menüsünü açın ve **Tartım** yazın. Simgesine tıklayın.
 
-![Tartım ana penceresi](ekran/01-ana-pencere.png)
+![Tartım ana penceresi](screenshots/tr/01-main-window.png)
 
 Açılan pencerede:
 
@@ -89,11 +89,11 @@ sistem menüsünden kontrol edebilirsiniz).
    `bt:...  (cihaz adı, tür)` şeklinde eklenir.
 4. Listeyi açıp tartınızı seçin.
 
-   ![Bluetooth cihazları port listesinde](ekran/03-bluetooth-liste.png)
+   ![Bluetooth cihazları port listesinde](screenshots/tr/03-bluetooth-list.png)
 
 5. **Bağlan**'a basın. Bağlantı kurulunca alt satırda "bağlandı" yazar:
 
-   ![Bluetooth tartıya bağlanıldı](ekran/04-bluetooth-bagli.png)
+   ![Bluetooth tartıya bağlanıldı](screenshots/tr/04-bluetooth-connected.png)
 
 Listede cihazın yanında üç türden biri yazar:
 
@@ -131,7 +131,7 @@ Bu işlem her cihaz için bir kez yapılır.
 2. Ölçüm bitince sonuç birkaç saniye içinde Tartım'ın sol tarafında görünür ve
    otomatik olarak kaydedilir. Ayrıca bir şey yapmanız gerekmez.
 
-   ![Ölçüm alındı: solda sonuç, sağda kayıtlı ölçümler](ekran/02-olcum.png)
+   ![Ölçüm alındı: solda sonuç, sağda kayıtlı ölçümler](screenshots/tr/02-measurement.png)
 3. Sıradaki danışan için aynı şekilde devam edin. Bağlantıyı kesmenize gerek yoktur.
 4. İşiniz bitince **Bağlantıyı kes**'e basabilir ya da pencereyi kapatabilirsiniz.
 
@@ -184,27 +184,27 @@ Rapor yaklaşık 2 dakika sürer.
 3. **Cihaz modeli** alanına modeli yazın. Model, cihazın altındaki ya da
    arkasındaki etikette yazar (ör. `MC-780MA`, `FAST`).
 
-   ![Cihaz raporu: modeli yazın ve bağlantı türünü seçin](ekran/05-rapor-baslat.png)
+   ![Cihaz raporu: modeli yazın ve bağlantı türünü seçin](screenshots/tr/05-report-start.png)
 4. Bağlantı türüne göre bir düğmeye basın:
    - **Ölçümü başlat:** tartı kabloyla bağlıysa
    - **Bluetooth ile…:** tartı Bluetooth'luysa. Açılan listeden tartınızı
      seçip **Seç ve ölçüme başla**'ya basın.
 
-     ![Rapor için Bluetooth cihazı seçimi](ekran/06-rapor-bluetooth.png)
+     ![Rapor için Bluetooth cihazı seçimi](screenshots/tr/06-report-bluetooth.png)
    - **SD kart dosyasından…:** cihaz ölçümleri SD karta yazıyorsa. Karttaki
      dosyayı seçin.
 5. "Şimdi cihazda ölçüm yapın" yazısını görünce tartıda bir ölçüm yapın.
    Veri gelince pencere kendiliğinden sonraki adıma geçer.
 
-   ![Ölçüm bekleniyor](ekran/07-rapor-bekle.png)
+   ![Ölçüm bekleniyor](screenshots/tr/07-report-wait.png)
 
 6. Cihaz ekranında gördüğünüz **kiloyu** yazın (ör. `72,4`). Bu isteğe bağlıdır
    ama veriyi doğrulamamızı çok kolaylaştırır.
 
-   ![Ekrandaki kiloyu yazın](ekran/08-rapor-kilo.png)
+   ![Ekrandaki kiloyu yazın](screenshots/tr/08-report-weight.png)
 
 7. **Raporu kaydet**'e basın. Rapor **Belgeler** klasörünüze
-   `tartim-rapor-MODEL-TARİH.json` adıyla kaydedilir ve gönderim seçenekleri
+   `tartim-report-MODEL-TARİH.json` adıyla kaydedilir ve gönderim seçenekleri
    görünür (bkz. 7.2).
 
 "Hiç veri gelmedi" yazsa bile raporu kaydedip gönderin; bu da işimize yarar.
@@ -214,7 +214,7 @@ Rapor yaklaşık 2 dakika sürer.
 Rapor kaydedildikten sonra pencerede raporu nasıl göndermek istediğiniz sorulur.
 Size uygun olanı seçin:
 
-![Gönderim seçenekleri](ekran/09-rapor-hazir.png)
+![Gönderim seçenekleri](screenshots/tr/09-report-done.png)
 
 | Seçenek | Ne olur? | Kimin için? |
 |---|---|---|
@@ -243,15 +243,15 @@ bilgisayarınızda durur; daha sonra yeniden gönderebilirsiniz (bkz. 7.3).
    <https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml>)
 2. GitHub hesabınızla giriş yapın. "Cihaz raporu" formu açılır:
 
-   ![GitHub'daki cihaz raporu formu](ekran/10-github-form.png)
+   ![GitHub'daki cihaz raporu formu](screenshots/tr/10-github-form.png)
 
 3. Formda:
    - **Cihaz modeli:** modeli yazın.
    - **Rapor dosyası:** **Klasörü aç** düğmesiyle açılan klasördeki
-     `tartim-rapor-....json` dosyasını sürükleyip bu kutuya bırakın. Dosya
+     `tartim-report-....json` dosyasını sürükleyip bu kutuya bırakın. Dosya
      yüklenince kutuda bir bağlantı belirir.
 
-     ![Rapor dosyasını bu kutuya sürükleyin](ekran/11-github-dosya.png)
+     ![Rapor dosyasını bu kutuya sürükleyin](screenshots/tr/11-github-file.png)
 
    - **Notlar:** varsa yaşadığınız sorunları yazın (isteğe bağlı).
    - **Onay:** sayfanın altındaki "Bu ölçüm gerçek bir danışana ait değildir"
@@ -275,7 +275,7 @@ kaydeder ve nasıl göndermek istediğinizi sorar. Kaydedilmiş bir raporu daha 
 sunucuya göndermek için:
 
 ```
-tartim rapor-gonder tartim-rapor-MC780MA-20261016-104512.json
+tartim rapor-gonder tartim-report-MC780MA-20261016-104512.json
 ```
 
 ---
@@ -311,7 +311,7 @@ sayılır.
   özel bir depoda tutulur; GitHub formuyla gönderilenler herkese açıktır.
   Her iki durumda da gerçek danışan ölçümü göndermeyin.
 - Kurumunuz sunucuya gönderimi tamamen kapatmak isterse bilgi işlem birimi
-  `TARTIM_RAPOR_ADRESI` ortam değişkenini boş bırakabilir; bu durumda seçenek
+  `TARTIM_REPORT_URL` ortam değişkenini boş bırakabilir; bu durumda seçenek
   pencerede görünmez.
 - Excel'e aktardığınız dosyalar da kişisel veri içerir; güvenli bir yerde saklayın.
 - Kurumunuzda kullanmadan önce açık rıza, erişim yetkisi ve saklama süresi

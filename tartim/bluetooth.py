@@ -1,15 +1,14 @@
-"""Bluetooth desteği (BlueZ, D-Bus üzerinden).
+"""Bluetooth support (BlueZ over D-Bus).
 
-İki tür cihaz vardır:
+There are two kinds of devices:
 
-* Klasik Bluetooth seri port (SPP) kullananlar: eşleştirildikten sonra kablo
-  gibi davranırlar. Port olarak ``bt:AA:BB:CC:DD:EE:FF`` (isteğe bağlı kanal:
-  ``bt:AA:BB:CC:DD:EE:FF@1``) yazmak yeterlidir; ``serial_io.open_port`` bunu
-  RFCOMM soketi olarak açar.
-* Bluetooth Low Energy (BLE) kullananlar: veri GATT özellikleri (characteristic)
-  üzerinden bildirim olarak gelir. Bluetooth SIG'in standart Weight Scale
-  (0x181D) ve Body Composition (0x181B) servislerini kullanan cihazlar burada
-  çözülür; üreticiye özel servisler için ham bildirimler rapora kaydedilir.
+* Classic Bluetooth serial port (SPP) devices behave like a cable once paired.
+  Use ``bt:AA:BB:CC:DD:EE:FF`` as the port (optional channel:
+  ``bt:AA:BB:CC:DD:EE:FF@1``); ``serial_io.open_port`` opens it as an RFCOMM socket.
+* Bluetooth Low Energy (BLE) devices send data as notifications on GATT
+  characteristics. Devices using the Bluetooth SIG standard Weight Scale
+  (0x181D) and Body Composition (0x181B) services are decoded here; for
+  vendor-specific services the raw notifications are saved in the report.
 """
 
 from __future__ import annotations
@@ -19,6 +18,8 @@ import struct
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+
+from .i18n import _
 
 BLUEZ = "org.bluez"
 ADAPTER = "org.bluez.Adapter1"
@@ -33,25 +34,25 @@ BODY_COMPOSITION_SERVICE = "0000181b-0000-1000-8000-00805f9b34fb"
 WEIGHT_MEASUREMENT = "00002a9d-0000-1000-8000-00805f9b34fb"
 BODY_COMPOSITION_MEASUREMENT = "00002a9c-0000-1000-8000-00805f9b34fb"
 
-# Bilinen standart UUID'lerin Türkçe adları (rapor okunurken işe yarar).
+# Names of well-known standard UUIDs (helpful when reading reports; not translated).
 KNOWN_UUIDS = {
-    "0000180a": "Cihaz bilgisi servisi",
-    "0000181d": "Tartı servisi (standart)",
-    "0000181b": "Vücut kompozisyonu servisi (standart)",
-    "0000180f": "Pil servisi",
-    "00002a00": "Cihaz adı",
-    "00002a19": "Pil düzeyi",
-    "00002a24": "Model numarası",
-    "00002a25": "Seri numarası",
-    "00002a26": "Donanım yazılımı sürümü",
-    "00002a27": "Donanım sürümü",
-    "00002a28": "Yazılım sürümü",
-    "00002a29": "Üretici adı",
-    "00002a9c": "Vücut kompozisyonu ölçümü",
-    "00002a9d": "Ağırlık ölçümü",
-    "00002a9e": "Tartı özellikleri",
+    "0000180a": "Device Information service",
+    "0000181d": "Weight Scale service (standard)",
+    "0000181b": "Body Composition service (standard)",
+    "0000180f": "Battery service",
+    "00002a00": "Device Name",
+    "00002a19": "Battery Level",
+    "00002a24": "Model Number",
+    "00002a25": "Serial Number",
+    "00002a26": "Firmware Revision",
+    "00002a27": "Hardware Revision",
+    "00002a28": "Software Revision",
+    "00002a29": "Manufacturer Name",
+    "00002a9c": "Body Composition Measurement",
+    "00002a9d": "Weight Measurement",
+    "00002a9e": "Weight Scale Feature",
 }
-# Cihazı tekil olarak tanımlayan değerler rapora alınmaz.
+# Values that uniquely identify a device are never put in a report.
 PRIVATE_UUIDS = {"00002a25-0000-1000-8000-00805f9b34fb"}
 
 
@@ -60,12 +61,12 @@ def uuid_name(uuid: str) -> str:
 
 
 def mask_address(address: str) -> str:
-    """İlk üç bayt (üretici kodu) kalır, cihaza özgü kısım gizlenir."""
+    """Keeps the first three bytes (vendor prefix) and hides the device-specific part."""
     parts = address.upper().split(":")
     return ":".join(parts[:3] + ["XX"] * (len(parts) - 3)) if len(parts) == 6 else "XX"
 
 
-# --- Standart BLE ölçümlerinin çözülmesi -------------------------------------
+# --- Decoding standard BLE measurements ---------------------------------------
 
 def decode_weight_measurement(data: bytes) -> dict:
     """Bluetooth SIG Weight Measurement (0x2A9D)."""
@@ -75,15 +76,15 @@ def decode_weight_measurement(data: bytes) -> dict:
     result: dict[str, object] = {}
     result["Wk"] = round(raw * 0.01 * 0.45359237, 2) if imperial else round(raw * 0.005, 2)
     offset = 3
-    if flags & 0x02:  # zaman damgası
+    if flags & 0x02:  # time stamp
         year, month, day, hour, minute, second = struct.unpack_from("<HBBBBB", data, offset)
         result["Da"] = f"{day:02d}/{month:02d}/{year}"
         result["TI"] = f"{hour:02d}:{minute:02d}"
         offset += 7
-    if flags & 0x04:  # kullanıcı numarası
+    if flags & 0x04:  # user id
         result["ID"] = str(data[offset])
         offset += 1
-    if flags & 0x08:  # BMI ve boy
+    if flags & 0x08:  # BMI and height
         bmi, height = struct.unpack_from("<HH", data, offset)
         result["MI"] = round(bmi * 0.1, 1)
         result["Hm"] = round(height * 0.1 * 2.54, 1) if imperial else round(height * 0.1, 1)
@@ -148,23 +149,23 @@ def decode_standard(uuid: str, data: bytes) -> dict | None:
         return None
 
 
-# --- Klasik Bluetooth (RFCOMM) -----------------------------------------------
+# --- Classic Bluetooth (RFCOMM) ------------------------------------------------
 
 def parse_bt_port(port: str) -> tuple[str, int | None]:
-    """``bt:AA:BB:CC:DD:EE:FF`` ya da ``bt:AA:BB:CC:DD:EE:FF@3``."""
+    """``bt:AA:BB:CC:DD:EE:FF`` or ``bt:AA:BB:CC:DD:EE:FF@3``."""
     rest = port[3:]
-    address, _, channel = rest.partition("@")
+    address, _sep, channel = rest.partition("@")
     return address.upper(), int(channel) if channel else None
 
 
 class RfcommPort:
-    """RFCOMM soketini pyserial portu gibi kullanılabilir yapar."""
+    """Makes an RFCOMM socket usable like a pyserial port."""
 
     in_waiting = 0
 
     def __init__(self, address: str, channel: int | None = None, timeout: float = 0.5):
         if not hasattr(socket, "AF_BLUETOOTH"):
-            raise SystemExit("Bu sistemde Bluetooth soketleri desteklenmiyor.")
+            raise SystemExit(_("Bluetooth sockets are not supported on this system."))
         errors = []
         for ch in [channel] if channel else range(1, 6):
             sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
@@ -173,15 +174,16 @@ class RfcommPort:
                 sock.connect((address, ch))
             except OSError as exc:
                 sock.close()
-                errors.append(f"kanal {ch}: {exc}")
+                errors.append(_("channel {channel}: {error}").format(channel=ch, error=exc))
                 continue
             sock.settimeout(timeout)
             self.sock, self.channel = sock, ch
             return
         raise SystemExit(
-            f"{address} adresine Bluetooth ile bağlanılamadı ({'; '.join(errors)}).\n"
-            "Cihazı açın ve önce sistem ayarlarındaki Bluetooth bölümünden eşleştirin "
-            "(PIN genellikle 0000 ya da 1234).")
+            _("Could not connect to {address} over Bluetooth ({errors}).").format(
+                address=address, errors="; ".join(errors)) + "\n" +
+            _("Turn the device on and pair it first in the Bluetooth section of the system "
+              "settings (the PIN is usually 0000 or 1234)."))
 
     def read(self, n: int = 1) -> bytes:
         try:
@@ -200,7 +202,7 @@ class RfcommPort:
         self.sock.close()
 
 
-# --- BlueZ erişimi ------------------------------------------------------------
+# --- BlueZ access --------------------------------------------------------------
 
 @dataclass
 class BtDevice:
@@ -220,12 +222,20 @@ class BtDevice:
         return WEIGHT_SCALE_SERVICE in self.uuids or BODY_COMPOSITION_SERVICE in self.uuids
 
     @property
-    def kind(self) -> str:
+    def kind_code(self) -> str:
+        """Stable identifier, used in reports."""
         if self.classic_serial:
-            return "Klasik (seri port)"
+            return "classic-serial"
         if self.standard_scale:
-            return "BLE (standart tartı)"
-        return "BLE"
+            return "ble-standard"
+        return "ble"
+
+    @property
+    def kind(self) -> str:
+        """Translated label for display."""
+        return {"classic-serial": _("Classic (serial port)"),
+                "ble-standard": _("BLE (standard scale)"),
+                "ble": "BLE"}[self.kind_code]
 
     @property
     def port(self) -> str:
@@ -233,14 +243,14 @@ class BtDevice:
 
 
 class BlueZ:
-    """BlueZ D-Bus arayüzü. Sinyaller bu nesneyi oluşturan iş parçacığının
-    GLib bağlamında işlenir; uzun işlemler ``pump`` ile ilerletilir."""
+    """BlueZ over D-Bus. Signals are dispatched in the GLib context of the thread
+    that created this object; long operations are advanced with ``pump``."""
 
     def __init__(self):
         try:
             from gi.repository import Gio, GLib  # noqa: PLC0415
         except ImportError as exc:
-            raise SystemExit("Bluetooth için python3-gi gerekli: sudo apt install python3-gi") \
+            raise SystemExit(_("Bluetooth needs python3-gi: sudo apt install python3-gi")) \
                 from exc
         self.Gio, self.GLib = Gio, GLib
         self.context = GLib.MainContext.new()
@@ -249,7 +259,8 @@ class BlueZ:
             self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
         except GLib.Error as exc:
             self.context.pop_thread_default()
-            raise SystemExit(f"Sistem D-Bus'ına bağlanılamadı: {exc.message}") from exc
+            raise SystemExit(_("Could not connect to the system D-Bus: {error}").format(
+                error=exc.message)) from exc
         self._subscriptions: list[int] = []
 
     def close(self) -> None:
@@ -272,7 +283,7 @@ class BlueZ:
             reply = self.bus.call_sync(BLUEZ, path, iface, method, params, None,
                                        self.Gio.DBusCallFlags.NONE, timeout_ms, None)
         except GLib.Error as exc:
-            raise BluetoothError(_friendly(exc.message)) from exc
+            raise BluetoothError.from_dbus(exc.message) from exc
         return reply.unpack() if reply else ()
 
     def objects(self) -> dict:
@@ -300,25 +311,31 @@ class BlueZ:
         for path, ifaces in self.objects().items():
             if ADAPTER in ifaces:
                 return path
-        raise BluetoothError("Bluetooth adaptörü bulunamadı. Bilgisayarınızda Bluetooth var mı?")
+        raise BluetoothError(_("No Bluetooth adapter found. Does this computer have Bluetooth?"),
+                             reason="no-adapter")
 
 
 class BluetoothError(Exception):
-    pass
+    def __init__(self, message: str, reason: str | None = None):
+        super().__init__(message)
+        self.reason = reason
 
-
-def _friendly(message: str) -> str:
-    if "NotReady" in message or "not ready" in message.lower():
-        return "Bluetooth kapalı. Sistem ayarlarından Bluetooth'u açın."
-    if "AccessDenied" in message or "NotPermitted" in message:
-        return f"Bluetooth erişim izni yok: {message}"
-    if "InProgress" in message:
-        return "Başka bir Bluetooth işlemi sürüyor, biraz sonra tekrar deneyin."
-    return message
+    @classmethod
+    def from_dbus(cls, message: str) -> "BluetoothError":
+        """Turns a BlueZ error into a message the user can act on."""
+        if "NotReady" in message or "not ready" in message.lower():
+            return cls(_("Bluetooth is off. Turn it on in the system settings."), "not-ready")
+        if "AccessDenied" in message or "NotPermitted" in message:
+            return cls(_("No permission to use Bluetooth: {error}").format(error=message),
+                       "denied")
+        if "InProgress" in message:
+            return cls(_("Another Bluetooth operation is in progress; try again shortly."),
+                       "in-progress")
+        return cls(message)
 
 
 def scan(bz: BlueZ, seconds: float = 10.0) -> list[BtDevice]:
-    """Yakındaki cihazları tarar. Adaptör kapalıysa açar."""
+    """Scans for nearby devices. Turns the adapter on if it is off."""
     adapter = bz.adapter()
     props = bz.objects()[adapter][ADAPTER]
     if not props.get("Powered"):
@@ -327,7 +344,7 @@ def scan(bz: BlueZ, seconds: float = 10.0) -> list[BtDevice]:
     try:
         bz.call(adapter, ADAPTER, "StartDiscovery")
     except BluetoothError as exc:
-        if "InProgress" not in str(exc) and "sürüyor" not in str(exc):
+        if exc.reason != "in-progress":
             raise
     try:
         bz.pump(seconds)
@@ -342,13 +359,13 @@ def scan(bz: BlueZ, seconds: float = 10.0) -> list[BtDevice]:
         if not dev or dev.get("Adapter") != adapter:
             continue
         if dev.get("RSSI") is None and not dev.get("Paired"):
-            continue  # önbellekte kalmış, şu an yakında olmayan cihaz
+            continue  # cached device that is not nearby right now
         devices.append(BtDevice(
             path=path, address=dev.get("Address", ""),
             name=dev.get("Alias") or dev.get("Name") or "",
             rssi=dev.get("RSSI"), uuids=[u.lower() for u in dev.get("UUIDs", [])],
             paired=bool(dev.get("Paired"))))
-    # Önce standart tartılar ve adı olanlar, sonra sinyal gücüne göre.
+    # Standard scales and named devices first, then by signal strength.
     devices.sort(key=lambda d: (not d.standard_scale, not d.name, -(d.rssi or -999)))
     return devices
 
@@ -364,12 +381,12 @@ def find_device(bz: BlueZ, address: str) -> BtDevice | None:
 
 
 def _connect(bz: BlueZ, device: BtDevice) -> dict[str, dict]:
-    """Cihaza bağlanır, servislerin çözülmesini bekler ve GATT özelliklerini döndürür."""
+    """Connects, waits until services are resolved and returns the GATT characteristics."""
     try:
         bz.call(device.path, DEVICE, "Connect", timeout_ms=30000)
     except BluetoothError as exc:
-        raise BluetoothError(f"Cihaza bağlanılamadı: {exc}. Cihazın açık ve yakında "
-                             "olduğundan emin olun.") from exc
+        raise BluetoothError(_("Could not connect to the device: {error}. Make sure it is on "
+                               "and nearby.").format(error=exc)) from exc
 
     def resolved() -> bool:
         return bool(bz.objects().get(device.path, {}).get(DEVICE, {}).get("ServicesResolved"))
@@ -394,7 +411,8 @@ def _start_notify(bz: BlueZ, chars: dict[str, dict], only: set[str] | None = Non
     started = []
     for path, props in chars.items():
         flags = props.get("Flags", [])
-        if ("notify" in flags or "indicate" in flags) and                 (only is None or props.get("UUID", "").lower() in only):
+        if ("notify" in flags or "indicate" in flags) and \
+                (only is None or props.get("UUID", "").lower() in only):
             try:
                 bz.call(path, CHARACTERISTIC, "StartNotify")
                 started.append(path)
@@ -406,8 +424,8 @@ def _start_notify(bz: BlueZ, chars: dict[str, dict], only: set[str] | None = Non
 def capture_ble(bz: BlueZ, device: BtDevice, timeout: float = 180.0, idle: float = 3.0,
                 cancelled: Callable[[], bool] = lambda: False,
                 on_connected: Callable[[], None] = lambda: None) -> dict:
-    """Cihaza bağlanır, GATT yapısını okur ve ölçüm sırasında gelen bildirimleri
-    toplar. Cihaza hiçbir veri yazılmaz."""
+    """Connects, reads the GATT structure and collects the notifications that
+    arrive during a measurement. Nothing is written to the device."""
     started: list[str] = []
     try:
         chars = _connect(bz, device)
@@ -467,16 +485,17 @@ def capture_ble(bz: BlueZ, device: BtDevice, timeout: float = 180.0, idle: float
 def listen_standard(bz: BlueZ, device: BtDevice, on_values: Callable[[dict], None],
                     stopping: Callable[[], bool], quiet: float = 1.5,
                     on_connected: Callable[[], None] = lambda: None) -> None:
-    """Standart BLE tartıyı sürekli dinler. Bir ölçüme ait paketler (ağırlık ve
-    vücut kompozisyonu ayrı gelir) ``quiet`` saniyelik sessizlikten sonra
-    birleştirilip ``on_values`` ile verilir."""
+    """Listens to a standard BLE scale. The packets of one measurement (weight and
+    body composition arrive separately) are merged after ``quiet`` seconds of
+    silence and passed to ``on_values``."""
     started: list[str] = []
     try:
         chars = _connect(bz, device)
         if not any(p.get("UUID", "").lower() in DECODERS for p in chars.values()):
             raise BluetoothError(
-                "Bu cihaz standart Bluetooth tartı servisini kullanmıyor; henüz doğrudan "
-                "okuyamıyoruz. “Cihaz raporu” ile rapor gönderirseniz destek ekleyebiliriz.")
+                _("This device does not use the standard Bluetooth scale service, so it cannot "
+                  "be read directly yet. If you send a “Device report”, we can add support."),
+                reason="not-standard")
         merged: dict[str, object] = {}
         state = {"last": None}
 
@@ -502,7 +521,7 @@ def listen_standard(bz: BlueZ, device: BtDevice, on_values: Callable[[dict], Non
 
 
 def record_from_values(model: str, values: dict) -> str:
-    """Çözülen değerleri, uygulamanın geri kalanının işlediği kayıt biçimine çevirir."""
+    """Turns decoded values into the record format the rest of the application handles."""
     pairs = [("MO", f'"{model}"')]
     for code, value in values.items():
         pairs.append((code, f'"{value}"' if isinstance(value, str) else str(value)))
@@ -510,7 +529,7 @@ def record_from_values(model: str, values: dict) -> str:
 
 
 def standard_values(capture: dict) -> dict:
-    """Standart bildirimlerden birleşik ölçüm değerleri (Tanita alan kodlarıyla)."""
+    """Merged measurement values from standard notifications (with Tanita field codes)."""
     values: dict[str, object] = {}
     for note in capture.get("notifications", []):
         values.update(note.get("decoded") or {})

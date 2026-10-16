@@ -1,5 +1,5 @@
-"""Depodaki yapılandırma dosyalarının geçerliliği. Bozuk bir şablon GitHub'da
-sessizce yok sayılır; bu test o hatayı erken yakalar."""
+"""Validity of the configuration files in the repository. GitHub silently ignores
+a broken template; this test catches that early."""
 
 import unittest
 from pathlib import Path
@@ -7,7 +7,7 @@ from pathlib import Path
 try:
     import yaml
 
-    if not hasattr(yaml, "safe_load"):  # aynı adlı başka bir modül
+    if not hasattr(yaml, "safe_load"):  # another module with the same name
         yaml = None
 except ImportError:
     yaml = None

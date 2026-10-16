@@ -1,3 +1,3 @@
-"""tartim: Pardus/Linux için vücut kompozisyon analizörü okuyucusu."""
+"""tartim: body composition analyzer reader for Pardus/Linux."""
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"

@@ -12,7 +12,7 @@ from tartim.serial_io import PortSettings, open_port
 ADDR = "C8:B2:1E:12:34:56"
 DEV = "/org/bluez/hci0/dev_C8_B2_1E_12_34_56"
 
-# Bluetooth SIG spesifikasyonuna göre elle kurulmuş örnek paketler.
+# Sample packets built by hand from the Bluetooth SIG specification.
 WEIGHT = struct.pack("<BHHBBBBBHH", 0x0A, 14480, 2026, 10, 16, 9, 30, 0, 245, 1720)
 BODY = struct.pack("<HHHHHH", 0x0008 | 0x0020 | 0x0100 | 0x0400, 213, 6276, 10800, 8040, 14480)
 
@@ -43,9 +43,9 @@ class HelperTests(unittest.TestCase):
 
     def test_device_kind(self):
         self.assertEqual(bt.BtDevice(DEV, ADDR, "x", None, [bt.SPP_UUID]).kind,
-                         "Klasik (seri port)")
+                         "Classic (serial port)")
         self.assertEqual(bt.BtDevice(DEV, ADDR, "x", None, [bt.WEIGHT_SCALE_SERVICE]).kind,
-                         "BLE (standart tartı)")
+                         "BLE (standard scale)")
 
     def test_bt_port_goes_to_rfcomm(self):
         opened = []
@@ -59,7 +59,7 @@ class HelperTests(unittest.TestCase):
 
 
 class FakeBlueZ:
-    """BlueZ'in D-Bus nesnelerini taklit eder: bir adaptör ve bir BLE tartı."""
+    """Mimics the BlueZ D-Bus objects: one adapter and one BLE scale."""
 
     class GLib:
         @staticmethod
@@ -114,7 +114,7 @@ class FakeBlueZ:
             self.tree[DEV][bt.DEVICE]["ServicesResolved"] = True
         if method == "ReadValue":
             if path.endswith("char0016"):
-                raise AssertionError("seri numarası okunmamalı")
+                raise AssertionError("the serial number must not be read")
             return (list(b"FAST-200"),)
         if method == "StartNotify":
             self.pending = self.to_send
@@ -137,14 +137,14 @@ class FakeBlueZ:
 class ScanAndCaptureTests(unittest.TestCase):
     def test_scan_powers_on_and_lists(self):
         bz = FakeBlueZ()
-        # Önbellekte kalmış (sinyal yok, eşleşmemiş) cihaz listelenmemeli.
+        # A cached device (no signal, not paired) must not be listed.
         bz.tree["/org/bluez/hci0/dev_11_22_33_44_55_66"] = {bt.DEVICE: {
             "Address": "11:22:33:44:55:66", "Alias": "Eski", "Adapter": "/org/bluez/hci0"}}
         devices = bt.scan(bz, 0)
         self.assertTrue(bz.tree["/org/bluez/hci0"][bt.ADAPTER]["Powered"])
         self.assertIn(("hci0", "StartDiscovery"), bz.calls)
         self.assertIn(("hci0", "StopDiscovery"), bz.calls)
-        self.assertEqual([(d.name, d.kind) for d in devices], [("FAST", "BLE (standart tartı)")])
+        self.assertEqual([(d.name, d.kind) for d in devices], [("FAST", "BLE (standard scale)")])
 
     def test_capture_ble_reads_and_decodes(self):
         bz = FakeBlueZ(notifications=[BODY])
@@ -154,7 +154,7 @@ class ScanAndCaptureTests(unittest.TestCase):
                          [bt.BODY_COMPOSITION_MEASUREMENT, bt.WEIGHT_MEASUREMENT])
         chars = result["services"][0]["characteristics"]
         self.assertEqual(chars[1]["value_text"], "FAST-200")
-        self.assertNotIn("value_hex", chars[2])  # seri numarası alınmadı
+        self.assertNotIn("value_hex", chars[2])  # the serial number was not read
         self.assertEqual(result["notifications"][0]["decoded"]["Wk"], 72.4)
         self.assertIn(("dev_C8_B2_1E_12_34_56", "Disconnect"), bz.calls)
 
@@ -200,7 +200,7 @@ class WizardBluetoothTests(unittest.TestCase):
                    timeout=1, idle=0.1)
         report = json.loads(out.read_text(encoding="utf-8"))
         m = report["measurements"][0]
-        self.assertEqual(report["device"]["connection"], "bluetooth (BLE (standart tartı))")
+        self.assertEqual(report["device"]["connection"], "bluetooth (ble-standard)")
         self.assertEqual(m["bluetooth"]["address"], "C8:B2:1E:XX:XX:XX")
         self.assertNotIn(ADDR, out.read_text(encoding="utf-8"))
         self.assertEqual(m["standard_values"]["FW"], 21.3)

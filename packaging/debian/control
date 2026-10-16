@@ -9,10 +9,9 @@ Suggests: socat
 Section: science
 Priority: optional
 Homepage: https://github.com/muratGursel/tartim
-Description: Tanita uyumlu vücut kompozisyon analizörü okuyucusu
- Vücut kompozisyon analizörlerinin seri port (RS-232 / USB) ve Bluetooth
- üzerinden gönderdiği ölçümleri okur, çözer ve yerel bir veritabanında
- saklar.
- SD kart dosyalarını içe aktarır, ölçümleri CSV olarak dışa aktarır ve
- geliştiricilere gönderilmek üzere cihaz raporu hazırlar. Masaüstü
- arayüzü ve komut satırı aracı içerir.
+Description: Tanita-compatible body composition analyzer reader
+ Reads the measurements that body composition analyzers send over a serial
+ port (RS-232 / USB) or Bluetooth, decodes them and stores them in a local
+ database. Imports SD card files, exports measurements as CSV and prepares
+ device reports for the developers. Includes a desktop interface and a
+ command line tool, in Turkish and English.

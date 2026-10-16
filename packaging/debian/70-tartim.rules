@@ -1,4 +1,4 @@
-# tartim: oturum açmış kullanıcıya USB-seri portlara erişim izni verir.
-# Böylece kullanıcıyı dialout grubuna eklemeye gerek kalmaz.
+# tartim: gives the logged-in user access to USB-serial ports,
+# so the user does not have to join the dialout group.
 SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", TAG+="uaccess"
 SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", TAG+="uaccess"

@@ -1,12 +1,12 @@
-"""Tanita ölçüm kayıtlarının çözümlenmesi ve seri akıştan ayrılması.
+"""Parsing Tanita measurement records and splitting them out of a serial stream.
 
-Bir kayıt örneği (alan sırası modele göre değişir)::
+An example record (field order depends on the model)::
 
     {0,16,~0,1,~1,1,~2,1,MO,"MC-780",ID,"0000000000000001",...,Wk,70.4,FW,21.3,...,CS,3A}
 
-Başındaki ``0,16,~0,1,...`` gibi biçim başlıkları atlanır; ilk anahtar
-görüldükten sonra öğeler ``anahtar, değer`` çiftleri olarak okunur. Çözülemeyen
-kayıtlar da ham metniyle saklanır, böylece yeni modeller için örnek toplanabilir.
+Leading format headers such as ``0,16,~0,1,...`` are skipped; after the first
+key the items are read as ``key, value`` pairs. Records that cannot be parsed
+are kept with their raw text so that samples of new models can be collected.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class Measurement:
         return self.values.get("Wk")  # type: ignore[return-value]
 
     def measured_at(self) -> datetime | None:
-        """Cihazın bildirdiği ölçüm zamanı. Tarih biçimi cihaz ayarına bağlıdır."""
+        """Measurement time reported by the device. The date format depends on its settings."""
         date = self.values.get("Da") or self.values.get("DT")
         time = self.values.get("TI") or self.values.get("Ti")
         if not date:
@@ -75,7 +75,7 @@ def _convert(code: str, text: str) -> object:
 
 
 def parse(record: str) -> Measurement:
-    """Tek bir kaydı çözer. Tanınmayan biçimde ``values`` boş döner."""
+    """Parses one record. For an unknown format ``values`` is empty."""
     text = record.strip().lstrip("{").rstrip("}").strip()
     text = text.replace("\r", "").replace("\n", "")
     try:
@@ -88,24 +88,24 @@ def parse(record: str) -> Measurement:
     if start is not None:
         pairs = tokens[start:]
         if len(pairs) % 2:
-            # Eksik kalmış (kesilmiş) kayıt.
+            # Incomplete (truncated) record.
             return Measurement(raw=record)
         for key, value in zip(pairs[0::2], pairs[1::2]):
             if not _KEY_RE.match(key):
-                # Çift dizilimi bozuldu: bu kayıt bilinen biçimde değil.
+                # The pair sequence broke: this record is not in a known format.
                 return Measurement(raw=record)
             values[key] = _convert(key, value)
-    # Yalnızca birkaç rastgele öğe eşleştiyse bunu ölçüm saymayalım.
+    # A few random items matching a key pattern do not make a measurement.
     if "Wk" not in values:
         values = {}
     return Measurement(raw=record, values=values)
 
 
 class Framer:
-    """Seri porttan gelen bayt parçalarını tam kayıtlara böler.
+    """Splits byte chunks from a serial port into complete records.
 
-    Kayıtlar CR/LF ile biter. ``{`` ile başlayıp henüz ``}`` ile kapanmamış bir
-    kayıt satır sonu içerse bile bir arada tutulur.
+    Records end with CR/LF. A record that starts with ``{`` and is not yet
+    closed with ``}`` is kept together even if it contains line breaks.
     """
 
     def __init__(self, encoding: str = "latin-1", max_len: int = 64 * 1024):
@@ -125,7 +125,7 @@ class Framer:
             if record:
                 records.append(record)
         if len(self._buffer) > self._max_len:
-            # Gürültü ya da yanlış baud hızı: tamponu sınırsız büyütme.
+            # Noise or a wrong baud rate: do not let the buffer grow without bound.
             records.append(self._buffer)
             self._buffer = ""
         return records

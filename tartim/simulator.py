@@ -1,13 +1,13 @@
-"""Cihaz olmadan geliştirme ve test için sanal tartı.
+"""A virtual scale for development and testing without a device.
 
-Linux'ta iki uçlu sanal seri port oluşturup bir ucuna simülatörü bağlayın::
+On Linux, create a pair of virtual serial ports and attach the simulator to one end::
 
-    socat -d -d pty,raw,echo=0,link=/tmp/tarti pty,raw,echo=0,link=/tmp/pc
-    tartim simule --port /tmp/tarti &
-    tartim dinle --port /tmp/pc
+    socat -d -d pty,raw,echo=0,link=/tmp/scale pty,raw,echo=0,link=/tmp/pc
+    tartim simulate --port /tmp/scale &
+    tartim listen --port /tmp/pc
 
-Üretilen kayıtlar SENTETİKTİR: alan kodları gerçek cihaz biçimini taklit eder
-ama değerler rastgeledir ve hiçbir kişiye ait değildir.
+The generated records are SYNTHETIC: the field codes mimic the real device
+format but the values are random and belong to no one.
 """
 
 from __future__ import annotations

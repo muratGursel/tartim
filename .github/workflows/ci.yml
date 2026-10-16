@@ -1,4 +1,4 @@
-name: Test ve paket
+name: Test and package
 
 on:
   push:
@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Bağımlılıklar
+      - name: Dependencies
         run: sudo apt-get update -q && sudo apt-get install -y -q python3-serial python3-yaml socat
-      - name: Testler
+      - name: Tests
         run: python3 -m unittest -v
 
   deb:
@@ -24,24 +24,28 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Paketi derle
+      - name: Build the package
         id: build
         run: echo "deb=$(sh packaging/build-deb.sh)" >> "$GITHUB_OUTPUT"
-      - name: Paketi kurup dene
+      - name: Install and try the package
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q "${{ steps.build.outputs.deb }}"
+          tartim --version
+          tartim list
+          # The Turkish command names of earlier releases must keep working.
           tartim --surum
-          tartim listele
+          TARTIM_LANG=tr tartim listele
       - uses: actions/upload-artifact@v4
         with:
           name: tartim-deb
           path: dist/*.deb
-      - name: Sürümü yayımla
+      - name: Publish the release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.deb
             docs/Tartim-Kullanim-Kilavuzu.pdf
+            docs/Tartim-User-Guide.pdf
           generate_release_notes: true

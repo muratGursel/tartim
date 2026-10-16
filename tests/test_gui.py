@@ -1,5 +1,5 @@
-"""Arayüz testi. Bir ekran (X11, Wayland ya da GTK Broadway) gerektirir;
-yoksa atlanır. Ekransız çalıştırmak için:
+"""Interface tests. They need a display (X11, Wayland or GTK Broadway) and are
+skipped without one. To run them headless:
 
     broadwayd :5 & GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 python3 -m unittest tests.test_gui
 """
@@ -24,7 +24,7 @@ _APP = None
 
 
 def shared_app():
-    """Tüm testler için tek GTK uygulaması (aynı oturumda ikincisi kaydedilemez)."""
+    """One GTK application for all tests (a second one cannot be registered)."""
     global _APP
     if _APP is None:
         from gi.repository import Gio
@@ -34,7 +34,7 @@ def shared_app():
     return _APP
 
 
-@unittest.skipUnless(HAVE_DISPLAY, "GTK 3 ve bir ekran gerekli")
+@unittest.skipUnless(HAVE_DISPLAY, "GTK 3 and a display are required")
 class MainWindowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -60,13 +60,29 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(len(self.window.history_model), 1)
         self.assertIn("62.4 kg", self.window.headline.get_label())
         details = {row[0]: row[1] for row in self.window.detail_model}
-        self.assertEqual(details["Cinsiyet"], "Kadın")
-        self.assertEqual(details["Yağ oranı"], "27.1 %")
-        self.assertNotIn("Durum", details)
+        self.assertEqual(details["Gender"], "Female")
+        self.assertEqual(details["Body fat"], "27.1 %")
+        self.assertNotIn("Status", details)
+
+    def test_turkish_interface(self):
+        from tartim import i18n
+        from tartim.gui import MainWindow
+
+        i18n.setup("tr")
+        try:
+            window = MainWindow(self.app, self.store)
+            window.on_record(SAMPLE)
+            details = {row[0]: row[1] for row in window.detail_model}
+            self.assertEqual(details["Cinsiyet"], "Kadın")
+            self.assertEqual(details["Yaş"], "34 yıl")
+            self.assertEqual(window.connect_button.get_label(), "Bağlan")
+            window.destroy()
+        finally:
+            i18n.setup("en")
 
     def test_unrecognized_record(self):
         self.window.on_record("garip,veri")
-        self.assertIn("Tanınmayan kayıt", self.window.headline.get_label())
+        self.assertIn("Unrecognized record", self.window.headline.get_label())
 
     def test_import_and_export(self):
         sd = Path(self.tmp.name) / "20261016.CSV"
@@ -78,7 +94,7 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(self.store.export_csv(out), 1)
 
 
-@unittest.skipUnless(HAVE_DISPLAY, "GTK 3 ve bir ekran gerekli")
+@unittest.skipUnless(HAVE_DISPLAY, "GTK 3 and a display are required")
 class ReportDoneTests(unittest.TestCase):
     def setUp(self):
         from tartim.gui import MainWindow, ReportDialog
@@ -99,22 +115,22 @@ class ReportDoneTests(unittest.TestCase):
     def test_send_choices(self):
         d = self.dialog
         self.assertEqual(list(d.send_choices), ["server", "github", "later"])
-        self.assertEqual(d.action.get_label(), "Gönder")
-        self.assertFalse(d.action.get_sensitive())  # onay olmadan gönderilemez
+        self.assertEqual(d.action.get_label(), "Send")
+        self.assertFalse(d.action.get_sensitive())  # cannot be sent without consent
         d.consent.set_active(True)
         self.assertTrue(d.action.get_sensitive())
         d.send_choices["github"].set_active(True)
-        self.assertEqual(d.action.get_label(), "GitHub formunu aç")
+        self.assertEqual(d.action.get_label(), "Open the GitHub form")
         d.send_choices["later"].set_active(True)
-        self.assertEqual(d.action.get_label(), "Tamam")
+        self.assertEqual(d.action.get_label(), "OK")
 
     def test_successful_send_locks_choices(self):
         d = self.dialog
         d._sent("20261016-abc", None)
         self.assertIn("20261016-abc", d.send_status.get_label())
         self.assertFalse(d.send_choices["server"].get_sensitive())
-        d._sent(None, "Sunucuya ulaşılamadı")
-        self.assertIn("Gönderilemedi", d.send_status.get_label())
+        d._sent(None, "Server unreachable")
+        self.assertIn("Could not send", d.send_status.get_label())
 
 
 if __name__ == "__main__":

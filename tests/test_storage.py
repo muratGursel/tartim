@@ -31,7 +31,7 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(store.measurements(subject_id="42")[0].weight, 62.4)
             self.assertEqual(store.list(subject_id="7"), [])
 
-    @unittest.skipIf(os.name != "posix", "dosya izinleri yalnızca POSIX'te")
+    @unittest.skipIf(os.name != "posix", "file permissions are POSIX only")
     def test_database_is_private(self):
         Store(self.db).close()
         self.assertEqual(self.db.stat().st_mode & 0o777, 0o600)
@@ -42,17 +42,19 @@ class StoreTests(unittest.TestCase):
         sd_file.write_text(f"{SAMPLE}\r\n{other}\r\nbozuk,satir\r\n", encoding="ascii")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
+            main(["--database", str(self.db), "import", str(sd_file)])
+            # The Turkish command and option names of earlier releases still work.
             main(["--veritabani", str(self.db), "ice-aktar", str(sd_file)])
-            main(["--veritabani", str(self.db), "ice-aktar", str(sd_file)])
-        self.assertIn("2 ölçüm eklendi, 0 tekrar atlandı, 1 kayıt tanınmadı", out.getvalue())
-        self.assertIn("0 ölçüm eklendi, 2 tekrar atlandı", out.getvalue())
+        self.assertIn("2 measurements added, 0 duplicates skipped, 1 record not recognized",
+                      out.getvalue())
+        self.assertIn("0 measurements added, 2 duplicates skipped", out.getvalue())
 
         csv_path = Path(self.tmp.name) / "cikti.csv"
         with contextlib.redirect_stdout(io.StringIO()):
-            main(["--veritabani", str(self.db), "disa-aktar", "--cikti", str(csv_path)])
+            main(["--database", str(self.db), "export", "--output", str(csv_path)])
         lines = csv_path.read_text(encoding="utf-8-sig").splitlines()
         self.assertEqual(len(lines), 3)
-        self.assertIn("Kilo", lines[0])
+        self.assertIn("Weight", lines[0])
         self.assertIn("62.4", lines[1])
 
 

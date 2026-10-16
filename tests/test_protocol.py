@@ -5,7 +5,7 @@ from datetime import datetime
 from tartim.protocol import Framer, parse
 from tartim.simulator import synthetic_record
 
-# SENTETİK örnek: alan kodları MC-780 biçimini taklit eder, değerler uydurmadır.
+# SYNTHETIC sample: the field codes mimic the MC-780 format, the values are made up.
 SAMPLE = ('{0,16,~0,1,~1,1,~2,1,MO,"MC-780",ID,"0000000000000042",St,0,'
           'Da,"16/10/2026",TI,"09:30",Bt,0,GE,2,AG,34,Hm,165.0,Pt,0.5,'
           'Wk,62.4,MI,22.9,FW,27.1,fW,16.9,MW,45.5,mW,43.2,bW,2.3,IF,4,rB,1350,'
@@ -20,7 +20,7 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(m.subject_id, "42")
         self.assertEqual(m.weight, 62.4)
         self.assertEqual(m.values["FW"], 27.1)
-        self.assertEqual(m.values["fW"], 16.9)  # büyük/küçük harf ayrımı
+        self.assertEqual(m.values["fW"], 16.9)  # case sensitive
         self.assertEqual(m.values["IF"], 4)
         self.assertEqual(m.measured_at(), datetime(2026, 10, 16, 9, 30))
 
@@ -28,7 +28,7 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(parse(SAMPLE).values["XX"], "yeni")
 
     def test_unrecognized_format_keeps_raw(self):
-        for raw in ("1,2,3,4", "", "Wk,70.0,FW", "merhaba dünya"):
+        for raw in ("1,2,3,4", "", "Wk,70.0,FW", "hello world"):
             m = parse(raw)
             self.assertFalse(m.recognized, raw)
             self.assertEqual(m.raw, raw)

@@ -1,4 +1,8 @@
-"""Komut satırı arayüzü: ``tartim <komut>``."""
+"""Command line interface: ``tartim <command>``.
+
+Commands and options are English; the Turkish names of earlier releases keep
+working as aliases (e.g. ``tartim dinle`` = ``tartim listen``).
+"""
 
 from __future__ import annotations
 
@@ -11,40 +15,43 @@ from datetime import datetime
 
 from . import __version__
 from .fields import describe
+from .i18n import _, ngettext
 from .protocol import Measurement, parse
 from .storage import Store
 
 
 def _print_measurement(m: Measurement, out=sys.stdout) -> None:
     if not m.recognized:
-        print(f"[tanınmayan kayıt] {m.raw}", file=out)
-        print("  Bu biçimi tanımıyoruz. Lütfen 'tartim ham' çıktısını proje ile paylaşın.",
-              file=out)
+        print(_("[unrecognized record] {raw}").format(raw=m.raw), file=out)
+        print("  " + _("We do not know this format. Please share the output of "
+                       "'tartim raw' with the project."), file=out)
         return
-    print(f"--- Ölçüm: {m.model or '?'}  danışan: {m.subject_id or '-'} ---", file=out)
+    print("--- " + _("Measurement: {model}  client: {client}").format(
+        model=m.model or "?", client=m.subject_id or "-") + " ---", file=out)
     for code, value in m.values.items():
         if code == "CS":
             continue
         f = describe(code)
-        shown = f.display(value)
         mark = "" if f.confirmed else " *"
-        print(f"  {f.label:<38} {shown}{mark}", file=out)
-    print("  (* alan anlamı henüz gerçek cihazla doğrulanmadı)", file=out)
+        print(f"  {f.name:<38} {f.display(value)}{mark}", file=out)
+    print("  " + _("(* the meaning of this field has not been verified on a real device yet)"),
+          file=out)
 
 
 def _port_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--port", required=True, help="ör. /dev/ttyUSB0")
-    p.add_argument("--baud", type=int, default=9600, help="varsayılan: 9600")
-    p.add_argument("--parite", choices="NEO", default="N", help="varsayılan: N")
-    p.add_argument("--veri-biti", type=int, choices=(7, 8), default=8)
-    p.add_argument("--dur-biti", type=float, choices=(1, 2), default=1)
+    p.add_argument("--port", required=True, help=_("e.g. /dev/ttyUSB0"))
+    p.add_argument("--baud", type=int, default=9600, help=_("default: {value}").format(value=9600))
+    p.add_argument("--parity", "--parite", choices="NEO", default="N",
+                   help=_("default: {value}").format(value="N"))
+    p.add_argument("--bytesize", "--veri-biti", type=int, choices=(7, 8), default=8)
+    p.add_argument("--stopbits", "--dur-biti", type=float, choices=(1, 2), default=1)
 
 
 def _open(args):
     from .serial_io import PortSettings, open_port  # noqa: PLC0415
 
-    return open_port(PortSettings(args.port, args.baud, args.veri_biti,
-                                  args.parite, args.dur_biti))
+    return open_port(PortSettings(args.port, args.baud, args.bytesize, args.parity,
+                                  args.stopbits))
 
 
 def cmd_ports(args) -> int:
@@ -52,7 +59,7 @@ def cmd_ports(args) -> int:
 
     ports = list_ports()
     if not ports:
-        print("Seri port bulunamadı. USB-seri çeviriciyi takıp 'lsusb' ile kontrol edin.")
+        print(_("No serial port found. Plug in the USB-serial adapter and check with 'lsusb'."))
     for device, desc in ports:
         print(f"{device}\t{desc}")
     return 0
@@ -61,20 +68,21 @@ def cmd_ports(args) -> int:
 def cmd_listen(args) -> int:
     from .serial_io import read_records  # noqa: PLC0415
 
-    store = None if args.kaydetme else Store(args.veritabani)
-    raw_log = open(args.ham_dosya, "ab") if args.ham_dosya else None
+    store = None if args.no_save else Store(args.database)
+    raw_log = open(args.raw_file, "ab") if args.raw_file else None
     port = _open(args)
-    print(f"{args.port} dinleniyor ({args.baud} {args.veri_biti}{args.parite}"
-          f"{args.dur_biti:g}). Çıkmak için Ctrl+C.", file=sys.stderr)
+    print(_("Listening on {port} ({settings}). Press Ctrl+C to quit.").format(
+        port=args.port, settings=f"{args.baud} {args.bytesize}{args.parity}{args.stopbits:g}"),
+        file=sys.stderr)
     count = 0
     try:
         for record in read_records(port, raw_log.write if raw_log else None):
             m = parse(record)
             _print_measurement(m)
             if store:
-                store.add(m, source=f"seri:{args.port}")
+                store.add(m, source=f"serial:{args.port}")
             count += 1
-            if args.adet and count >= args.adet:
+            if args.count and count >= args.count:
                 break
     except KeyboardInterrupt:
         pass
@@ -88,10 +96,10 @@ def cmd_listen(args) -> int:
 
 
 def cmd_raw(args) -> int:
-    """Protokol keşfi: gelen her baytı zaman damgasıyla onaltılık ve metin olarak yazar."""
+    """Protocol discovery: prints every incoming chunk with a time stamp, as hex and text."""
     port = _open(args)
-    out = open(args.cikti, "a", encoding="utf-8") if args.cikti else sys.stdout
-    print("Ham veri kaydediliyor. Cihazda bir ölçüm yapın; çıkmak için Ctrl+C.",
+    out = open(args.output, "a", encoding="utf-8") if args.output else sys.stdout
+    print(_("Recording raw data. Take a measurement on the device; press Ctrl+C to quit."),
           file=sys.stderr)
     try:
         while True:
@@ -110,21 +118,27 @@ def cmd_raw(args) -> int:
 
 
 def cmd_import(args) -> int:
-    """SD karttaki ya da ham kayıt dosyalarındaki ölçümleri içe aktarır."""
-    with Store(args.veritabani) as store:
-        added, skipped, unknown = store.import_files(args.dosyalar)
-    print(f"{added} ölçüm eklendi, {skipped} tekrar atlandı, {unknown} kayıt tanınmadı.")
+    """Imports measurements from SD card files or raw capture files."""
+    with Store(args.database) as store:
+        added, skipped, unknown = store.import_files(args.files)
+    print(", ".join([
+        ngettext("{n} measurement added", "{n} measurements added", added).format(n=added),
+        ngettext("{n} duplicate skipped", "{n} duplicates skipped", skipped).format(n=skipped),
+        ngettext("{n} record not recognized", "{n} records not recognized",
+                 unknown).format(n=unknown),
+    ]) + ".")
     return 0
 
 
 def cmd_list(args) -> int:
-    with Store(args.veritabani) as store:
-        rows = store.list(limit=args.son, subject_id=args.danisan)
+    with Store(args.database) as store:
+        rows = store.list(limit=args.last, subject_id=args.client)
     if args.json:
         print(json.dumps([{**dict(r), "values_json": json.loads(r["values_json"])} for r in rows],
                          ensure_ascii=False, indent=2))
         return 0
-    print(f"{'No':>5}  {'Ölçüm zamanı':<19}  {'Model':<8}  {'Danışan':<10}  {'Kilo':>6}")
+    print(f"{_('No'):>5}  {_('Measured at'):<19}  {_('Model'):<8}  {_('Client'):<10}  "
+          f"{_('Weight'):>6}")
     for r in rows:
         when = r["measured_at"] or r["received_at"]
         weight = f"{r['weight']:.1f}" if r["weight"] is not None else "-"
@@ -134,35 +148,38 @@ def cmd_list(args) -> int:
 
 
 def cmd_export(args) -> int:
-    with Store(args.veritabani) as store:
-        count = store.export_csv(args.cikti, subject_id=args.danisan)
-    print(f"{count} ölçüm {args.cikti} dosyasına yazıldı.")
+    with Store(args.database) as store:
+        count = store.export_csv(args.output, subject_id=args.client)
+    print(ngettext("{n} measurement written to {path}.", "{n} measurements written to {path}.",
+                   count).format(n=count, path=args.output))
     return 0
 
 
 def cmd_bluetooth(args) -> int:
     from .bluetooth import BluetoothError, BlueZ, scan  # noqa: PLC0415
 
-    print(f"Taranıyor ({args.sure:g} sn)... Tartının açık olduğundan emin olun.", file=sys.stderr)
+    print(_("Scanning ({seconds} s)... Make sure the scale is turned on.").format(
+        seconds=f"{args.timeout:g}"), file=sys.stderr)
     with BlueZ() as bz:
         try:
-            devices = scan(bz, args.sure)
+            devices = scan(bz, args.timeout)
         except BluetoothError as exc:
             raise SystemExit(str(exc)) from exc
     if not devices:
-        print("Cihaz bulunamadı.")
+        print(_("No device found."))
     for d in devices:
         rssi = f"{d.rssi} dBm" if d.rssi is not None else ""
-        print(f"{d.port:<21}  {d.name or '(adsız)':<24}  {d.kind:<22}  {rssi}")
+        print(f"{d.port:<21}  {d.name or _('(no name)'):<24}  {d.kind:<22}  {rssi}")
     if any(d.classic_serial for d in devices):
-        print("\nKlasik (seri port) cihazları doğrudan okuyabilirsiniz: tartim dinle --port bt:ADRES")
+        print("\n" + _("Classic (serial port) devices can be read directly: "
+                       "tartim listen --port bt:ADDRESS"))
     return 0
 
 
 def cmd_gui(args) -> int:
     from .gui import main as gui_main  # noqa: PLC0415
 
-    argv = (["--veritabani", args.veritabani] if args.veritabani else []) + \
+    argv = (["--database", args.database] if args.database else []) + \
         (["--port", args.port] if args.port else [])
     return gui_main(argv)
 
@@ -176,94 +193,104 @@ def cmd_report(args) -> int:
 def cmd_send_report(args) -> int:
     from .report import send_saved  # noqa: PLC0415
 
-    return send_saved(args.dosya, note=args.not_)
+    return send_saved(args.file, note=args.note)
 
 
 def cmd_simulate(args) -> int:
     from .simulator import synthetic_record  # noqa: PLC0415
 
     port = _open(args)
-    rng = random.Random(args.tohum)
+    rng = random.Random(args.seed)
     try:
-        for i in range(args.adet):
+        for i in range(args.count):
             port.write(synthetic_record(subject=i + 1, rng=rng, model=args.model).encode("ascii"))
             port.flush()
-            print(f"Sentetik ölçüm {i + 1}/{args.adet} gönderildi.", file=sys.stderr)
-            if i + 1 < args.adet:
-                time.sleep(args.aralik)
+            print(_("Synthetic measurement {i}/{count} sent.").format(i=i + 1, count=args.count),
+                  file=sys.stderr)
+            if i + 1 < args.count:
+                time.sleep(args.interval)
     finally:
         port.close()
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="tartim", description="Vücut kompozisyon analizörü okuyucusu")
-    p.add_argument("--surum", action="version", version=f"tartim {__version__}")
-    p.add_argument("--veritabani", help="SQLite dosyası (varsayılan: ~/.local/share/tartim/tartim.db)")
-    sub = p.add_subparsers(dest="komut", required=True)
+    p = argparse.ArgumentParser(prog="tartim", description=_("Body composition analyzer reader"))
+    p.add_argument("--version", "--surum", action="version", version=f"tartim {__version__}")
+    p.add_argument("--database", "--veritabani",
+                   help=_("SQLite file (default: ~/.local/share/tartim/tartim.db)"))
+    sub = p.add_subparsers(dest="command", required=True, metavar=_("COMMAND"))
 
-    s = sub.add_parser("portlar", help="Seri portları listele")
+    s = sub.add_parser("ports", aliases=["portlar"], help=_("List serial ports"))
     s.set_defaults(func=cmd_ports)
 
-    s = sub.add_parser("dinle", help="Cihazı dinle, ölçümleri göster ve kaydet")
+    s = sub.add_parser("listen", aliases=["dinle"],
+                       help=_("Listen to the device, show and save measurements"))
     _port_args(s)
-    s.add_argument("--kaydetme", action="store_true", help="Veritabanına yazma")
-    s.add_argument("--ham-dosya", help="Gelen ham baytları bu dosyaya da ekle")
-    s.add_argument("--adet", type=int, help="Bu kadar kayıttan sonra çık")
+    s.add_argument("--no-save", "--kaydetme", action="store_true",
+                   help=_("Do not write to the database"))
+    s.add_argument("--raw-file", "--ham-dosya", help=_("Also append the raw bytes to this file"))
+    s.add_argument("--count", "--adet", type=int, help=_("Quit after this many records"))
     s.set_defaults(func=cmd_listen)
 
-    s = sub.add_parser("ham", help="Protokol keşfi için ham veriyi kaydet")
+    s = sub.add_parser("raw", aliases=["ham"], help=_("Record raw data for protocol discovery"))
     _port_args(s)
-    s.add_argument("--cikti", help="Çıktı dosyası (varsayılan: ekran)")
+    s.add_argument("--output", "--cikti", help=_("Output file (default: screen)"))
     s.set_defaults(func=cmd_raw)
 
-    s = sub.add_parser("ice-aktar", help="SD kart CSV dosyalarını içe aktar")
-    s.add_argument("dosyalar", nargs="+")
+    s = sub.add_parser("import", aliases=["ice-aktar"], help=_("Import SD card CSV files"))
+    s.add_argument("files", nargs="+")
     s.set_defaults(func=cmd_import)
 
-    s = sub.add_parser("listele", help="Kayıtlı ölçümleri listele")
-    s.add_argument("--son", type=int, default=20)
-    s.add_argument("--danisan", help="Danışan numarası")
+    s = sub.add_parser("list", aliases=["listele"], help=_("List saved measurements"))
+    s.add_argument("--last", "--son", type=int, default=20)
+    s.add_argument("--client", "--danisan", help=_("Client number"))
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_list)
 
-    s = sub.add_parser("disa-aktar", help="Ölçümleri CSV olarak dışa aktar (Excel uyumlu)")
-    s.add_argument("--cikti", required=True)
-    s.add_argument("--danisan")
+    s = sub.add_parser("export", aliases=["disa-aktar"],
+                       help=_("Export measurements as CSV (opens in Excel)"))
+    s.add_argument("--output", "--cikti", required=True)
+    s.add_argument("--client", "--danisan")
     s.set_defaults(func=cmd_export)
 
-    s = sub.add_parser("bluetooth", help="Yakındaki Bluetooth cihazlarını listele")
-    s.add_argument("--sure", type=float, default=10, help="Tarama süresi, saniye")
+    s = sub.add_parser("bluetooth", help=_("List nearby Bluetooth devices"))
+    s.add_argument("--timeout", "--sure", type=float, default=10, help=_("Scan time, seconds"))
     s.set_defaults(func=cmd_bluetooth)
 
-    s = sub.add_parser("arayuz", help="Masaüstü arayüzünü aç")
-    s.add_argument("--port", help="Açılışta seçili olacak port")
+    s = sub.add_parser("gui", aliases=["arayuz"], help=_("Open the desktop interface"))
+    s.add_argument("--port", help=_("Port selected at start-up"))
     s.set_defaults(func=cmd_gui)
 
-    s = sub.add_parser("rapor", help="Geliştiricilere gönderilecek cihaz raporu hazırla")
-    s.add_argument("--port", help="Belirtilmezse otomatik bulunur")
-    s.add_argument("--baud", type=int, help="varsayılan: 9600")
-    s.add_argument("--sure", type=float, default=180, help="Ölçüm için bekleme süresi, saniye")
-    s.add_argument("--cikti", help="Rapor dosyası (varsayılan: tartim-rapor-MODEL-TARIH.json)")
-    s.add_argument("--dosya", nargs="+", help="Seri port yerine SD kart dosyalarını kullan")
-    s.add_argument("--bluetooth", action="store_true", help="Tartıyı Bluetooth ile bul")
-    s.add_argument("--gonderme", action="store_true",
-                   help="Raporu yalnızca kaydet, sunucuya göndermeyi sorma")
-    s.add_argument("--ayrintili", action="store_true",
-                   help="Daha fazla soru sor (cihaz ayarları, ekrandaki tüm değerler)")
+    s = sub.add_parser("report", aliases=["rapor"],
+                       help=_("Prepare a device report for the developers"))
+    s.add_argument("--port", help=_("Found automatically if not given"))
+    s.add_argument("--baud", type=int, help=_("default: {value}").format(value=9600))
+    s.add_argument("--timeout", "--sure", type=float, default=180,
+                   help=_("How long to wait for a measurement, seconds"))
+    s.add_argument("--output", "--cikti",
+                   help=_("Report file (default: tartim-report-MODEL-DATE.json)"))
+    s.add_argument("--file", "--dosya", nargs="+", help=_("Use SD card files instead of a port"))
+    s.add_argument("--bluetooth", action="store_true", help=_("Find the scale over Bluetooth"))
+    s.add_argument("--no-send", "--gonderme", action="store_true",
+                   help=_("Only save the report, do not offer to send it"))
+    s.add_argument("--detailed", "--ayrintili", action="store_true",
+                   help=_("Ask more questions (device settings, all values on the display)"))
     s.set_defaults(func=cmd_report)
 
-    s = sub.add_parser("rapor-gonder", help="Kaydedilmiş bir raporu proje sunucusuna gönder")
-    s.add_argument("dosya")
-    s.add_argument("--not", dest="not_", default="", help="Kısa not (isteğe bağlı)")
+    s = sub.add_parser("send-report", aliases=["rapor-gonder"],
+                       help=_("Send a saved report to the project server"))
+    s.add_argument("file")
+    s.add_argument("--note", "--not", default="", help=_("Short note (optional)"))
     s.set_defaults(func=cmd_send_report)
 
-    s = sub.add_parser("simule", help="Sanal tartı: porta sentetik ölçüm gönder")
+    s = sub.add_parser("simulate", aliases=["simule"],
+                       help=_("Virtual scale: send synthetic measurements to a port"))
     _port_args(s)
-    s.add_argument("--adet", type=int, default=3)
-    s.add_argument("--aralik", type=float, default=2.0, help="saniye")
+    s.add_argument("--count", "--adet", type=int, default=3)
+    s.add_argument("--interval", "--aralik", type=float, default=2.0, help=_("seconds"))
     s.add_argument("--model", default="MC-780")
-    s.add_argument("--tohum", type=int, help="Tekrarlanabilir değerler için")
+    s.add_argument("--seed", "--tohum", type=int, help=_("For repeatable values"))
     s.set_defaults(func=cmd_simulate)
     return p
 

@@ -1,9 +1,10 @@
-"""docs/KULLANIM.md dosyasından yazdırılabilir PDF kılavuz üretir.
+"""Builds the printable PDF user guides from the Markdown guides.
 
-Gerekenler: python3-markdown ve Chrome / Chromium / Edge.
+Needs python3-markdown and Chrome / Chromium / Edge.
 
-    python3 docs/pdf_olustur.py            # docs/Tartim-Kullanim-Kilavuzu.pdf
-    python3 docs/pdf_olustur.py --html     # yalnızca HTML (kontrol için)
+    python3 docs/make_pdf.py              # both languages
+    python3 docs/make_pdf.py --lang en    # docs/Tartim-User-Guide.pdf only
+    python3 docs/make_pdf.py --html       # HTML only (for checking)
 """
 
 import argparse
@@ -21,8 +22,23 @@ import markdown
 
 DOCS = Path(__file__).resolve().parent
 ROOT = DOCS.parent
-SOURCE = DOCS / "KULLANIM.md"
-OUTPUT = DOCS / "Tartim-Kullanim-Kilavuzu.pdf"
+
+LANGUAGES = {
+    "tr": {
+        "source": "KULLANIM.md", "output": "Tartim-Kullanim-Kilavuzu.pdf",
+        "title": "Tartım Kullanım Kılavuzu", "contents": "İçindekiler", "contents_md": "İçindekiler",
+        "subtitle": "Vücut analiz cihazları için kullanım kılavuzu",
+        "topics": "Kurulum · Kablolu ve Bluetooth bağlantı · Ölçüm · Cihaz raporu",
+        "version": "Sürüm", "date": "%d.%m.%Y",
+    },
+    "en": {
+        "source": "USER_GUIDE.md", "output": "Tartim-User-Guide.pdf",
+        "title": "Tartım User Guide", "contents": "Contents", "contents_md": "Contents",
+        "subtitle": "User guide for body composition analyzers",
+        "topics": "Installation · Wired and Bluetooth connection · Measurements · Device report",
+        "version": "Version", "date": "%Y-%m-%d",
+    },
+}
 
 BROWSERS = [
     "chromium", "chromium-browser", "google-chrome", "google-chrome-stable", "microsoft-edge",
@@ -35,7 +51,7 @@ CSS = """
   size: A4;
   margin: 18mm 16mm 20mm 16mm;
   @bottom-center { content: counter(page) " / " counter(pages); font: 9pt sans-serif; color: #667; }
-  @bottom-left { content: "Tartım Kullanım Kılavuzu"; font: 9pt sans-serif; color: #667; }
+  @bottom-left { content: "@FOOTER@"; font: 9pt sans-serif; color: #667; }
 }
 @page :first { @bottom-center { content: none; } @bottom-left { content: none; } }
 html { font-family: "Noto Sans", "DejaVu Sans", "Segoe UI", Arial, sans-serif; font-size: 10.5pt;
@@ -73,7 +89,7 @@ hr { display: none; }
 
 
 def slugify(value: str, separator: str = "-") -> str:
-    """GitHub'ın başlık bağlantılarıyla aynı biçim (Türkçe harfler korunur)."""
+    """Same format as GitHub's heading anchors (Turkish letters are kept)."""
     value = unicodedata.normalize("NFC", value).lower()
     value = re.sub(r"[^\w\- ]", "", value)
     return value.replace(" ", separator)
@@ -83,7 +99,7 @@ LIST_ITEM = re.compile(r"^(?:[-*] |\d+\. )")
 
 
 def normalize_indent(text: str) -> str:
-    """GitHub 3 boşluklu liste girintisini kabul eder, Python-Markdown 4 ister."""
+    """GitHub accepts three-space list indentation; Python-Markdown wants four."""
     out, fence = [], False
     for line in text.splitlines():
         stripped = line.lstrip(" ")
@@ -92,42 +108,47 @@ def normalize_indent(text: str) -> str:
             fence = not fence if indent == 0 else fence
         if stripped and 0 < indent and (not fence or indent % 4):
             line = " " * (math.ceil(indent / 3) * 4) + stripped
-        # Bir metin satırının hemen altında başlayan alt liste, Python-Markdown'da
-        # paragrafın devamı sayılır; araya boş satır koy.
-        if not fence and LIST_ITEM.match(stripped) and out and out[-1].strip()                 and not LIST_ITEM.match(out[-1].lstrip()):
+        # A list that starts right below a line of text counts as part of the
+        # paragraph in Python-Markdown; put an empty line in between.
+        if not fence and LIST_ITEM.match(stripped) and out and out[-1].strip() \
+                and not LIST_ITEM.match(out[-1].lstrip()):
             out.append("")
         out.append(line)
     return "\n".join(out)
 
 
-def build_html(version: str) -> str:
-    text = SOURCE.read_text(encoding="utf-8")
-    # Elle yazılmış içindekiler listesi yerine PDF'te kendi listemizi koyuyoruz.
-    text = re.sub(r"\*\*İçindekiler\*\*\n\n(?:\d+\. .*\n)+", "", text)
+def build_html(language: str, version: str) -> str:
+    cfg = LANGUAGES[language]
+    text = (DOCS / cfg["source"]).read_text(encoding="utf-8")
+    # The PDF gets its own table of contents instead of the hand-written one.
+    text = re.sub(r"\*\*" + cfg["contents_md"] + r"\*\*\n\n(?:\d+\. .*\n)+", "", text)
+    # The PDF download link only makes sense on GitHub.
+    text = re.sub(r"^📄.*\n", "", text, flags=re.M)
+    config = {"toc": {"slugify": slugify, "toc_depth": "2-2"}}
     body = markdown.markdown(normalize_indent(text),
                              extensions=["tables", "fenced_code", "toc", "sane_lists"],
-                             extension_configs={"toc": {"slugify": slugify, "toc_depth": "2-2"}})
-    toc = markdown.Markdown(extensions=["toc"],
-                            extension_configs={"toc": {"slugify": slugify, "toc_depth": "2-2"}})
+                             extension_configs=config)
+    toc = markdown.Markdown(extensions=["toc"], extension_configs=config)
     toc.convert(normalize_indent(text))
-    images = (DOCS / "ekran").resolve().as_uri()
-    body = body.replace('src="ekran/', f'src="{images}/')
+    shots = (DOCS / "screenshots").resolve().as_uri()
+    body = body.replace('src="screenshots/', f'src="{shots}/')
     icon = (ROOT / "packaging/debian/io.github.muratgursel.Tartim.svg").resolve().as_uri()
     cover = f"""
 <section class="cover">
   <img class="brand" src="{icon}" alt="" style="border:none">
   <h1 style="display:block">Tartım</h1>
-  <p>Vücut analiz cihazları için kullanım kılavuzu</p>
-  <p>Kurulum · Kablolu ve Bluetooth bağlantı · Ölçüm · Cihaz raporu</p>
-  <div class="meta">Sürüm {version} · {date.today():%d.%m.%Y}<br>
+  <p>{cfg["subtitle"]}</p>
+  <p>{cfg["topics"]}</p>
+  <div class="meta">{cfg["version"]} {version} · {date.today():{cfg["date"]}}<br>
   https://github.com/muratGursel/tartim</div>
 </section>
 <section>
-  <div class="toc-title">İçindekiler</div>
+  <div class="toc-title">{cfg["contents"]}</div>
   {toc.toc}
 </section>"""
-    return (f"<!doctype html><html lang='tr'><head><meta charset='utf-8'>"
-            f"<title>Tartım Kullanım Kılavuzu</title><style>{CSS}</style></head>"
+    css = CSS.replace("@FOOTER@", cfg["title"])
+    return (f"<!doctype html><html lang='{language}'><head><meta charset='utf-8'>"
+            f"<title>{cfg['title']}</title><style>{css}</style></head>"
             f"<body>{cover}{body}</body></html>")
 
 
@@ -136,29 +157,33 @@ def find_browser() -> str:
         found = shutil.which(name) or (name if Path(name).exists() else None)
         if found:
             return found
-    raise SystemExit("Chrome, Chromium ya da Edge bulunamadı.")
+    raise SystemExit("Chrome, Chromium or Edge was not found.")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--html", action="store_true", help="Yalnızca HTML yaz")
-    parser.add_argument("--cikti", default=str(OUTPUT))
+    parser.add_argument("--lang", choices=sorted(LANGUAGES), action="append",
+                        help="Language (default: all)")
+    parser.add_argument("--html", action="store_true", help="Write HTML only")
     args = parser.parse_args()
     version = re.search(r'__version__ = "(.+)"',
                         (ROOT / "tartim/__init__.py").read_text(encoding="utf-8")).group(1)
-    html = build_html(version)
-    if args.html:
-        out = Path(args.cikti).with_suffix(".html")
-        out.write_text(html, encoding="utf-8")
-        print(out)
-        return 0
-    with tempfile.TemporaryDirectory() as tmp:
-        page = Path(tmp) / "kilavuz.html"
-        page.write_text(html, encoding="utf-8")
-        subprocess.run([find_browser(), "--headless=new", "--disable-gpu", "--no-pdf-header-footer",
-                        f"--user-data-dir={tmp}/profil", f"--print-to-pdf={Path(args.cikti).resolve()}",
-                        page.as_uri()], check=True, capture_output=True, timeout=120)
-    print(args.cikti)
+    for language in args.lang or sorted(LANGUAGES):
+        html = build_html(language, version)
+        output = DOCS / LANGUAGES[language]["output"]
+        if args.html:
+            out = output.with_suffix(".html")
+            out.write_text(html, encoding="utf-8")
+            print(out)
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "guide.html"
+            page.write_text(html, encoding="utf-8")
+            subprocess.run([find_browser(), "--headless=new", "--disable-gpu",
+                            "--no-pdf-header-footer", f"--user-data-dir={tmp}/profile",
+                            f"--print-to-pdf={output.resolve()}", page.as_uri()],
+                           check=True, capture_output=True, timeout=120)
+        print(output)
     return 0
 
 

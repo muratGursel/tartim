@@ -1,0 +1,1001 @@
+# Turkish translation of tartim.
+# Copyright (C) 2026 Murat GÜRSEL
+# This file is distributed under the same license as the tartim package.
+msgid ""
+msgstr ""
+"Project-Id-Version: tartim\n"
+"PO-Revision-Date: 2026-10-16 12:00+0300\n"
+"Last-Translator: Murat GÜRSEL <muratgursel@gmail.com>\n"
+"Language-Team: Turkish\n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Unknown field ({code})"
+msgstr "Bilinmeyen alan ({code})"
+
+msgid "years"
+msgstr "yıl"
+
+msgid "Device model"
+msgstr "Cihaz modeli"
+
+msgid "Client number"
+msgstr "Danışan numarası"
+
+msgid "Status"
+msgstr "Durum"
+
+msgid "Date"
+msgstr "Tarih"
+
+msgid "Time"
+msgstr "Saat"
+
+msgid "Body type"
+msgstr "Vücut tipi"
+
+msgid "Standard"
+msgstr "Standart"
+
+msgid "Athletic"
+msgstr "Atletik"
+
+msgid "Gender"
+msgstr "Cinsiyet"
+
+msgid "Male"
+msgstr "Erkek"
+
+msgid "Female"
+msgstr "Kadın"
+
+msgid "Age"
+msgstr "Yaş"
+
+msgid "Height"
+msgstr "Boy"
+
+msgid "Clothes weight (tare)"
+msgstr "Kıyafet ağırlığı (dara)"
+
+msgid "Activity level"
+msgstr "Aktivite düzeyi"
+
+msgid "Weight"
+msgstr "Kilo"
+
+msgid "Body mass index (BMI)"
+msgstr "Vücut kitle indeksi (BMI)"
+
+msgid "Body fat"
+msgstr "Yağ oranı"
+
+msgid "Fat mass"
+msgstr "Yağ kütlesi"
+
+msgid "Fat-free mass (FFM)"
+msgstr "Yağsız kütle (FFM)"
+
+msgid "Muscle mass"
+msgstr "Kas kütlesi"
+
+msgid "Bone mass"
+msgstr "Kemik kütlesi"
+
+msgid "Total body water"
+msgstr "Toplam vücut suyu oranı"
+
+msgid "Total body water mass"
+msgstr "Toplam vücut suyu"
+
+msgid "Intracellular water"
+msgstr "Hücre içi su"
+
+msgid "Extracellular water"
+msgstr "Hücre dışı su"
+
+msgid "Visceral fat rating"
+msgstr "Viseral yağ derecesi"
+
+msgid "Basal metabolic rate (BMR)"
+msgstr "Bazal metabolizma hızı (BMR)"
+
+msgid "Metabolic age"
+msgstr "Metabolik yaş"
+
+msgid "Leg muscle score"
+msgstr "Bacak kas skoru"
+
+msgid "Muscle percentage"
+msgstr "Kas oranı"
+
+msgid "Soft lean mass"
+msgstr "Yumuşak yağsız kütle"
+
+msgid "Impedance"
+msgstr "Empedans"
+
+msgid "Body fat - right arm"
+msgstr "Yağ oranı - sağ kol"
+
+msgid "Body fat - left arm"
+msgstr "Yağ oranı - sol kol"
+
+msgid "Body fat - right leg"
+msgstr "Yağ oranı - sağ bacak"
+
+msgid "Body fat - left leg"
+msgstr "Yağ oranı - sol bacak"
+
+msgid "Body fat - trunk"
+msgstr "Yağ oranı - gövde"
+
+msgid "Muscle mass - right arm"
+msgstr "Kas kütlesi - sağ kol"
+
+msgid "Muscle mass - left arm"
+msgstr "Kas kütlesi - sol kol"
+
+msgid "Muscle mass - right leg"
+msgstr "Kas kütlesi - sağ bacak"
+
+msgid "Muscle mass - left leg"
+msgstr "Kas kütlesi - sol bacak"
+
+msgid "Muscle mass - trunk"
+msgstr "Kas kütlesi - gövde"
+
+msgid "Checksum"
+msgstr "Sağlama değeri"
+
+msgid "pyserial was not found. To install it on Pardus: sudo apt install python3-serial"
+msgstr "pyserial bulunamadı. Pardus'ta kurmak için: sudo apt install python3-serial"
+
+msgid "Could not open {port}: {error}"
+msgstr "{port} açılamadı: {error}"
+
+msgid ""
+"You do not have permission to use the port. Add your user to the dialout group:\n"
+"  sudo usermod -aG dialout $USER   (then log out and back in)"
+msgstr ""
+"Porta erişim izniniz yok. Kullanıcınızı dialout grubuna ekleyin:\n"
+"  sudo usermod -aG dialout $USER   (ardından oturumu kapatıp açın)"
+
+msgid "No"
+msgstr "No"
+
+msgid "Received at"
+msgstr "Kayıt zamanı"
+
+msgid "Bluetooth sockets are not supported on this system."
+msgstr "Bu sistemde Bluetooth soketleri desteklenmiyor."
+
+msgid "channel {channel}: {error}"
+msgstr "kanal {channel}: {error}"
+
+msgid "Could not connect to {address} over Bluetooth ({errors})."
+msgstr "{address} adresine Bluetooth ile bağlanılamadı ({errors})."
+
+msgid ""
+"Turn the device on and pair it first in the Bluetooth section of the system "
+"settings (the PIN is usually 0000 or 1234)."
+msgstr ""
+"Cihazı açın ve önce sistem ayarlarındaki Bluetooth bölümünden eşleştirin "
+"(PIN genellikle 0000 ya da 1234)."
+
+msgid "Classic (serial port)"
+msgstr "Klasik (seri port)"
+
+msgid "BLE (standard scale)"
+msgstr "BLE (standart tartı)"
+
+msgid "Bluetooth needs python3-gi: sudo apt install python3-gi"
+msgstr "Bluetooth için python3-gi gerekli: sudo apt install python3-gi"
+
+msgid "Could not connect to the system D-Bus: {error}"
+msgstr "Sistem D-Bus'ına bağlanılamadı: {error}"
+
+msgid "No Bluetooth adapter found. Does this computer have Bluetooth?"
+msgstr "Bluetooth adaptörü bulunamadı. Bilgisayarınızda Bluetooth var mı?"
+
+msgid "Bluetooth is off. Turn it on in the system settings."
+msgstr "Bluetooth kapalı. Sistem ayarlarından Bluetooth'u açın."
+
+msgid "No permission to use Bluetooth: {error}"
+msgstr "Bluetooth erişim izni yok: {error}"
+
+msgid "Another Bluetooth operation is in progress; try again shortly."
+msgstr "Başka bir Bluetooth işlemi sürüyor, biraz sonra tekrar deneyin."
+
+msgid "Could not connect to the device: {error}. Make sure it is on and nearby."
+msgstr "Cihaza bağlanılamadı: {error}. Cihazın açık ve yakında olduğundan emin olun."
+
+msgid ""
+"This device does not use the standard Bluetooth scale service, so it cannot "
+"be read directly yet. If you send a “Device report”, we can add support."
+msgstr ""
+"Bu cihaz standart Bluetooth tartı servisini kullanmıyor; henüz doğrudan "
+"okuyamıyoruz. “Cihaz raporu” ile rapor gönderirseniz destek ekleyebiliriz."
+
+msgid "Weight (kg)"
+msgstr "Kilo (kg)"
+
+msgid "Body fat (%)"
+msgstr "Yağ oranı (%)"
+
+msgid "Fat mass (kg)"
+msgstr "Yağ kütlesi (kg)"
+
+msgid "Muscle mass (kg)"
+msgstr "Kas kütlesi (kg)"
+
+msgid "Bone mass (kg)"
+msgstr "Kemik kütlesi (kg)"
+
+msgid "Total body water (%)"
+msgstr "Toplam vücut suyu (%)"
+
+msgid "Basal metabolic rate (kcal)"
+msgstr "Bazal metabolizma hızı (kcal)"
+
+msgid "Gender (1: male, 2: female)"
+msgstr "Cinsiyet (1: erkek, 2: kadın)"
+
+msgid "Height (cm)"
+msgstr "Boy (cm)"
+
+msgid "Clothes weight / tare (kg)"
+msgstr "Kıyafet ağırlığı / dara (kg)"
+
+msgid "RS-232 (with a USB-serial adapter)"
+msgstr "RS-232 (USB-seri çevirici ile)"
+
+msgid "USB (direct)"
+msgstr "USB (doğrudan)"
+
+msgid "SD card file"
+msgstr "SD kart dosyası"
+
+msgid "Send to the project server (no account needed)"
+msgstr "Proje sunucusuna gönder (hesap gerekmez)"
+
+msgid "I will send it myself with the GitHub form"
+msgstr "GitHub formuyla kendim göndereceğim"
+
+msgid "Do not send now, keep the file on my computer"
+msgstr "Şimdilik gönderme, dosya bilgisayarımda kalsın"
+
+msgid "You must confirm that the measurement does not belong to a real client."
+msgstr "Ölçümün gerçek bir danışana ait olmadığını onaylamanız gerekir."
+
+msgid "The report format was not recognised."
+msgstr "Rapor biçimi tanınmadı."
+
+msgid "The device model is missing."
+msgstr "Cihaz modeli eksik."
+
+msgid "The measurement list is not valid."
+msgstr "Ölçüm listesi geçersiz."
+
+msgid "The note must be text."
+msgstr "Not metin olmalı."
+
+msgid "The request was not valid."
+msgstr "Geçersiz istek."
+
+msgid "The report could not be read."
+msgstr "Rapor okunamadı."
+
+msgid "The report is too large."
+msgstr "Rapor çok büyük."
+
+msgid "Too many reports were sent; please try again later."
+msgstr "Çok fazla rapor gönderildi, lütfen daha sonra deneyin."
+
+msgid "The server is not accepting reports right now; please try again later."
+msgstr "Sunucu şu an rapor kabul etmiyor, lütfen daha sonra deneyin."
+
+msgid "Input ended; no report was created."
+msgstr "Girdi sona erdi, rapor oluşturulmadı."
+
+msgid "This is required."
+msgstr "Bu bilgi gerekli."
+
+msgid "Enter a number (or press Enter to skip)."
+msgstr "Sayı girin (boş bırakmak için Enter)."
+
+msgid "Enter a number between 1 and {count}."
+msgstr "1 ile {count} arasında bir sayı girin."
+
+msgid "y"
+msgstr "e"
+
+msgid "n"
+msgstr "h"
+
+msgid "Sending to a server is disabled in this installation (TARTIM_REPORT_URL is empty)."
+msgstr "Sunucuya gönderim bu kurulumda kapalı (TARTIM_REPORT_URL boş)."
+
+msgid "The server did not accept the report (HTTP {status})."
+msgstr "Sunucu raporu kabul etmedi (HTTP {status})."
+
+msgid ""
+"Could not reach the report server. Check your internet connection; the report "
+"file is still on your computer and can be sent later."
+msgstr ""
+"Rapor sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edin; rapor "
+"dosyası bilgisayarınızda duruyor, daha sonra yeniden gönderebilirsiniz."
+
+msgid "Weight shown on the display (optional)"
+msgstr "Ekranda görünen kilo (boş geçebilirsiniz)"
+
+msgid "Decoded values:"
+msgstr "Çözülen değerler:"
+
+msgid ""
+"The record is not in a known format. The values on the display will help us "
+"decode it."
+msgstr ""
+"Kayıt bilinen biçimde değil. Ekrandaki değerler biçimi çözmemize yardım "
+"edecek."
+
+msgid "Values you entered on the device before measuring (leave empty if unsure):"
+msgstr "Ölçümden önce cihaza girdiğiniz bilgiler (bilmiyorsanız boş bırakın):"
+
+msgid "Results shown on the device display or printout (optional):"
+msgstr "Cihaz ekranında (ya da çıktıda) gördüğünüz sonuçlar (boş bırakılabilir):"
+
+msgid "Comparison: {ok} of {count} value matched the expected field."
+msgid_plural "Comparison: {ok} of {count} values matched the expected field."
+msgstr[0] "Karşılaştırma: {count} değerden {ok} tanesi beklenen alanla eşleşti."
+msgstr[1] "Karşılaştırma: {count} değerden {ok} tanesi beklenen alanla eşleşti."
+
+msgid "Port: {port}"
+msgstr "Port: {port}"
+
+msgid "Serial ports found:"
+msgstr "Bulunan seri portlar:"
+
+msgid "No serial port found. Plug in the cable and check with 'lsusb'."
+msgstr "Seri port bulunamadı. Kabloyu takıp 'lsusb' ile kontrol edin."
+
+msgid "Port (number or path, e.g. /dev/ttyUSB0)"
+msgstr "Port (numara ya da yol, ör. /dev/ttyUSB0)"
+
+msgid "No Bluetooth device found. Turn the scale on and try again."
+msgstr "Bluetooth cihazı bulunamadı. Tartıyı açıp tekrar deneyin."
+
+msgid "Bluetooth devices found:"
+msgstr "Bulunan Bluetooth cihazları:"
+
+msgid "(no name)"
+msgstr "(adsız)"
+
+msgid "Which one is your scale? (number)"
+msgstr "Tartınız hangisi? (numara)"
+
+msgid "Turn the scale on. Scanning for nearby Bluetooth devices (10 s)..."
+msgstr "Tartıyı açın. Yakındaki Bluetooth cihazları taranıyor (10 sn)..."
+
+msgid "Connected to {name}. Take a measurement on the device now..."
+msgstr "{name} bağlandı. Şimdi cihazda ölçüm yapın..."
+
+msgid "Data received ({count} bytes)."
+msgstr "Veri alındı ({count} bayt)."
+
+msgid "No data received."
+msgstr "Hiç veri gelmedi."
+
+msgid "Connecting to {name}..."
+msgstr "{name} ile bağlantı kuruluyor..."
+
+msgid "the device"
+msgstr "cihaz"
+
+msgid "Connected. Take a measurement on the device now (waiting up to {seconds} s)..."
+msgstr "Bağlandı. Şimdi cihazda ölçüm yapın (en fazla {seconds} sn)..."
+
+msgid "{count} Bluetooth notification received."
+msgid_plural "{count} Bluetooth notifications received."
+msgstr[0] "{count} Bluetooth bildirimi alındı."
+msgstr[1] "{count} Bluetooth bildirimi alındı."
+
+msgid ""
+"No notifications arrived. The device may be waiting for a command from its app "
+"before sending data; the report still contains its service structure."
+msgstr ""
+"Hiç bildirim gelmedi. Bu cihaz, veri göndermeden önce uygulamadan komut "
+"bekliyor olabilir; rapor yine de cihazın servis yapısını içeriyor."
+
+msgid "=== tartim device report ==="
+msgstr "=== tartim cihaz raporu ==="
+
+msgid "A report file will be prepared so that we can learn your device's data format."
+msgstr "Cihazınızın veri biçimini öğrenmemiz için bir rapor dosyası hazırlanacak."
+
+msgid "The client number is masked. Measure yourself or a test person."
+msgstr "Danışan numarası maskelenir. Ölçümü kendinizle ya da bir test kişisiyle yapın."
+
+msgid "Device model (on the label, e.g. MC-780MA)"
+msgstr "Cihaz modeli (etikette yazar, ör. MC-780MA)"
+
+msgid "Brand"
+msgstr "Marka"
+
+msgid "Device software version (if known)"
+msgstr "Cihaz yazılım sürümü (biliyorsanız)"
+
+msgid "PC data output setting (if known, e.g. 'default' or 'BC-418')"
+msgstr "PC veri çıkış ayarı (biliyorsanız, ör. 'varsayılan' ya da 'BC-418')"
+
+msgid "Connection type:"
+msgstr "Bağlantı türü:"
+
+msgid "Your choice"
+msgstr "Seçiminiz"
+
+msgid "Path of the file on the SD card"
+msgstr "SD karttaki dosyanın yolu"
+
+msgid "Could not read {path}: {error}"
+msgstr "{path} okunamadı: {error}"
+
+msgid "{name} read."
+msgstr "{name} okundu."
+
+msgid "Baud rate"
+msgstr "Baud hızı"
+
+msgid "How many measurements should be recorded?"
+msgstr "Kaç ölçüm kaydedilsin?"
+
+msgid "Take a measurement on the device now. Waiting (up to {seconds} s)..."
+msgstr "Şimdi cihazda ölçüm yapın. Bekleniyor (en fazla {seconds} sn)..."
+
+msgid "No data received. Check the cable and the device's PC output setting."
+msgstr "Hiç veri gelmedi. Kabloyu ve cihazın PC çıkış ayarını kontrol edin."
+
+msgid "To try another speed: tartim report --baud 19200"
+msgstr "Farklı bir hız denemek için: tartim rapor --baud 19200"
+
+msgid "Anything you want to add (problems, device settings etc.)"
+msgstr "Eklemek istediğiniz not (sorunlar, cihaz ayarları vb.)"
+
+msgid "Report saved: {path}"
+msgstr "Rapor kaydedildi: {path}"
+
+msgid "How would you like to send the report?"
+msgstr "Raporu nasıl göndermek istersiniz?"
+
+msgid "Does this measurement belong to you or a test person (not a real client)?"
+msgstr "Bu ölçüm gerçek bir danışana değil, size ya da bir test kişisine mi ait?"
+
+msgid ""
+"Measurements of real clients are not sent. Please take a new measurement of "
+"yourself or a test person."
+msgstr ""
+"Gerçek danışan ölçümleri gönderilmez. Lütfen kendinizle ya da bir test "
+"kişisiyle yeni bir ölçüm yapın."
+
+msgid "A short note (optional)"
+msgstr "Eklemek istediğiniz kısa bir not (isteğe bağlı)"
+
+msgid "Could not send: {error}"
+msgstr "Gönderilemedi: {error}"
+
+msgid "To try again later: tartim send-report {path}"
+msgstr "Daha sonra yeniden denemek için: tartim rapor-gonder {path}"
+
+msgid "Sent, thank you! Your report number: {id}"
+msgstr "Gönderildi, teşekkürler! Rapor numaranız: {id}"
+
+msgid "Open the form at this address and drag the file into the “Report file” box:"
+msgstr "Şu adresteki formu açın, dosyayı “Rapor dosyası” kutusuna sürükleyin:"
+
+msgid "The report stays on your computer. To send it later:"
+msgstr "Rapor bilgisayarınızda kaldı. Daha sonra göndermek için:"
+
+msgid "or send the file with the GitHub form: {url}"
+msgstr "ya da dosyayı GitHub formuyla gönderin: {url}"
+
+msgid "Could not read the report file: {error}"
+msgstr "Rapor dosyası okunamadı: {error}"
+
+msgid "Measurements of real clients are not sent."
+msgstr "Gerçek danışan ölçümleri gönderilmez."
+
+msgid "Cancelled; no report was created."
+msgstr "İptal edildi, rapor oluşturulmadı."
+
+msgid "[unrecognized record] {raw}"
+msgstr "[tanınmayan kayıt] {raw}"
+
+msgid "We do not know this format. Please share the output of 'tartim raw' with the project."
+msgstr "Bu biçimi tanımıyoruz. Lütfen 'tartim ham' çıktısını proje ile paylaşın."
+
+msgid "Measurement: {model}  client: {client}"
+msgstr "Ölçüm: {model}  danışan: {client}"
+
+msgid "(* the meaning of this field has not been verified on a real device yet)"
+msgstr "(* alan anlamı henüz gerçek cihazla doğrulanmadı)"
+
+msgid "e.g. /dev/ttyUSB0"
+msgstr "ör. /dev/ttyUSB0"
+
+msgid "default: {value}"
+msgstr "varsayılan: {value}"
+
+msgid "No serial port found. Plug in the USB-serial adapter and check with 'lsusb'."
+msgstr "Seri port bulunamadı. USB-seri çeviriciyi takıp 'lsusb' ile kontrol edin."
+
+msgid "Listening on {port} ({settings}). Press Ctrl+C to quit."
+msgstr "{port} dinleniyor ({settings}). Çıkmak için Ctrl+C."
+
+msgid "Recording raw data. Take a measurement on the device; press Ctrl+C to quit."
+msgstr "Ham veri kaydediliyor. Cihazda bir ölçüm yapın; çıkmak için Ctrl+C."
+
+msgid "{n} measurement added"
+msgid_plural "{n} measurements added"
+msgstr[0] "{n} ölçüm eklendi"
+msgstr[1] "{n} ölçüm eklendi"
+
+msgid "{n} duplicate skipped"
+msgid_plural "{n} duplicates skipped"
+msgstr[0] "{n} tekrar atlandı"
+msgstr[1] "{n} tekrar atlandı"
+
+msgid "{n} record not recognized"
+msgid_plural "{n} records not recognized"
+msgstr[0] "{n} kayıt tanınmadı"
+msgstr[1] "{n} kayıt tanınmadı"
+
+msgid "Measured at"
+msgstr "Ölçüm zamanı"
+
+msgid "Model"
+msgstr "Model"
+
+msgid "Client"
+msgstr "Danışan"
+
+msgid "{n} measurement written to {path}."
+msgid_plural "{n} measurements written to {path}."
+msgstr[0] "{n} ölçüm {path} dosyasına yazıldı."
+msgstr[1] "{n} ölçüm {path} dosyasına yazıldı."
+
+msgid "Scanning ({seconds} s)... Make sure the scale is turned on."
+msgstr "Taranıyor ({seconds} sn)... Tartının açık olduğundan emin olun."
+
+msgid "No device found."
+msgstr "Cihaz bulunamadı."
+
+msgid "Classic (serial port) devices can be read directly: tartim listen --port bt:ADDRESS"
+msgstr "Klasik (seri port) cihazları doğrudan okuyabilirsiniz: tartim dinle --port bt:ADRES"
+
+msgid "Synthetic measurement {i}/{count} sent."
+msgstr "Sentetik ölçüm {i}/{count} gönderildi."
+
+msgid "Body composition analyzer reader"
+msgstr "Vücut kompozisyon analizörü okuyucusu"
+
+msgid "SQLite file (default: ~/.local/share/tartim/tartim.db)"
+msgstr "SQLite dosyası (varsayılan: ~/.local/share/tartim/tartim.db)"
+
+msgid "List serial ports"
+msgstr "Seri portları listele"
+
+msgid "Listen to the device, show and save measurements"
+msgstr "Cihazı dinle, ölçümleri göster ve kaydet"
+
+msgid "Do not write to the database"
+msgstr "Veritabanına yazma"
+
+msgid "Also append the raw bytes to this file"
+msgstr "Gelen ham baytları bu dosyaya da ekle"
+
+msgid "Quit after this many records"
+msgstr "Bu kadar kayıttan sonra çık"
+
+msgid "Record raw data for protocol discovery"
+msgstr "Protokol keşfi için ham veriyi kaydet"
+
+msgid "Output file (default: screen)"
+msgstr "Çıktı dosyası (varsayılan: ekran)"
+
+msgid "Import SD card CSV files"
+msgstr "SD kart CSV dosyalarını içe aktar"
+
+msgid "List saved measurements"
+msgstr "Kayıtlı ölçümleri listele"
+
+msgid "Export measurements as CSV (opens in Excel)"
+msgstr "Ölçümleri CSV olarak dışa aktar (Excel uyumlu)"
+
+msgid "List nearby Bluetooth devices"
+msgstr "Yakındaki Bluetooth cihazlarını listele"
+
+msgid "Scan time, seconds"
+msgstr "Tarama süresi, saniye"
+
+msgid "Open the desktop interface"
+msgstr "Masaüstü arayüzünü aç"
+
+msgid "Port selected at start-up"
+msgstr "Açılışta seçili olacak port"
+
+msgid "Prepare a device report for the developers"
+msgstr "Geliştiricilere gönderilecek cihaz raporu hazırla"
+
+msgid "Found automatically if not given"
+msgstr "Belirtilmezse otomatik bulunur"
+
+msgid "How long to wait for a measurement, seconds"
+msgstr "Ölçüm için bekleme süresi, saniye"
+
+msgid "Report file (default: tartim-report-MODEL-DATE.json)"
+msgstr "Rapor dosyası (varsayılan: tartim-report-MODEL-TARIH.json)"
+
+msgid "Use SD card files instead of a port"
+msgstr "Seri port yerine SD kart dosyalarını kullan"
+
+msgid "Find the scale over Bluetooth"
+msgstr "Tartıyı Bluetooth ile bul"
+
+msgid "Only save the report, do not offer to send it"
+msgstr "Raporu yalnızca kaydet, sunucuya göndermeyi sorma"
+
+msgid "Ask more questions (device settings, all values on the display)"
+msgstr "Daha fazla soru sor (cihaz ayarları, ekrandaki tüm değerler)"
+
+msgid "Send a saved report to the project server"
+msgstr "Kaydedilmiş bir raporu proje sunucusuna gönder"
+
+msgid "Short note (optional)"
+msgstr "Kısa not (isteğe bağlı)"
+
+msgid "Virtual scale: send synthetic measurements to a port"
+msgstr "Sanal tartı: porta sentetik ölçüm gönder"
+
+msgid "seconds"
+msgstr "saniye"
+
+msgid "For repeatable values"
+msgstr "Tekrarlanabilir değerler için"
+
+msgid "COMMAND"
+msgstr "KOMUT"
+
+msgid "Not connected. Choose the port and press “Connect”."
+msgstr "Bağlı değil. Portu seçip “Bağlan”a basın."
+
+msgid "Connection lost: {error}"
+msgstr "Bağlantı koptu: {error}"
+
+msgid "no name"
+msgstr "adsız"
+
+msgid "Device report"
+msgstr "Cihaz raporu"
+
+msgid "Help"
+msgstr "Yardım"
+
+msgid "Open the user guide"
+msgstr "Kullanım kılavuzunu aç"
+
+msgid "Port:"
+msgstr "Port:"
+
+msgid "The port the scale is connected to. You can type it if it is not in the list."
+msgstr "Tartının bağlı olduğu port. Listede yoksa yazabilirsiniz."
+
+msgid "Scan the ports again"
+msgstr "Portları yeniden tara"
+
+msgid "Search for Bluetooth scales"
+msgstr "Bluetooth tartıları ara"
+
+msgid "Speed:"
+msgstr "Hız:"
+
+msgid "Baud rate. Leave it at 9600 if unsure."
+msgstr "Baud hızı. Emin değilseniz 9600 bırakın."
+
+msgid "Connect"
+msgstr "Bağlan"
+
+msgid "Last measurement"
+msgstr "Son ölçüm"
+
+msgid "Measurement"
+msgstr "Ölçüm"
+
+msgid "Value"
+msgstr "Değer"
+
+msgid "Saved measurements"
+msgstr "Kayıtlı ölçümler"
+
+msgid "Import from SD card…"
+msgstr "SD karttan içe aktar…"
+
+msgid "Export for Excel…"
+msgstr "Excel için dışa aktar…"
+
+msgid "Write all measurements to a CSV file that Excel and LibreOffice can open"
+msgstr "Tüm ölçümleri Excel / LibreOffice'in açabileceği CSV dosyasına yaz"
+
+msgid "No measurements yet."
+msgstr "Henüz ölçüm yok."
+
+msgid "Connect to the scale and take a measurement on the device; the result appears here."
+msgstr "Tartıya bağlanın ve cihazda bir ölçüm yapın; sonuç burada görünür."
+
+msgid "Unrecognized record"
+msgstr "Tanınmayan kayıt"
+
+msgid ""
+"We do not know this device's format yet. If you prepare a report with the "
+"“Device report” button and send it, we can add support."
+msgstr ""
+"Bu cihazın biçimini henüz tanımıyoruz. “Cihaz raporu” düğmesiyle bir rapor "
+"hazırlayıp bize gönderirseniz destek ekleyebiliriz."
+
+msgid "Raw data"
+msgstr "Ham veri"
+
+msgid "Client {number}"
+msgstr "Danışan {number}"
+
+msgid "Could not open"
+msgstr "Açılamadı"
+
+msgid "No port selected"
+msgstr "Port seçilmedi"
+
+msgid ""
+"Choose the port the scale is connected to. If the list is empty, plug in the "
+"cable and press the refresh button."
+msgstr ""
+"Tartının bağlı olduğu portu seçin. Liste boşsa kabloyu takıp yenile düğmesine "
+"basın."
+
+msgid "{name} connected. Take a measurement on the device."
+msgstr "{name} bağlandı. Cihazda ölçüm yapın."
+
+msgid "Connecting to {name} over Bluetooth..."
+msgstr "{name} cihazına Bluetooth ile bağlanılıyor..."
+
+msgid "Listening on {port}. Take a measurement on the device."
+msgstr "{port} dinleniyor. Cihazda ölçüm yapın."
+
+msgid "Disconnect"
+msgstr "Bağlantıyı kes"
+
+msgid "Searching for Bluetooth devices (10 s)... Make sure the scale is on."
+msgstr "Bluetooth cihazları aranıyor (10 sn)... Tartının açık olduğundan emin olun."
+
+msgid "{n} Bluetooth device found. Choose your scale in the list and press “Connect”."
+msgid_plural "{n} Bluetooth devices found. Choose your scale in the list and press “Connect”."
+msgstr[0] "{n} Bluetooth cihazı bulundu. Listeden tartınızı seçip “Bağlan”a basın."
+msgstr[1] "{n} Bluetooth cihazı bulundu. Listeden tartınızı seçip “Bağlan”a basın."
+
+msgid "The Bluetooth scan failed."
+msgstr "Bluetooth taraması yapılamadı."
+
+msgid "Disconnected."
+msgstr "Bağlantı kesildi."
+
+msgid "Listening on {port}. Last measurement received at {time}."
+msgstr "{port} dinleniyor. Son ölçüm {time} saatinde alındı."
+
+msgid "Not connected."
+msgstr "Bağlı değil."
+
+msgid "Could not connect to the scale"
+msgstr "Tartıya bağlanılamadı"
+
+msgid "record {number}"
+msgstr "kayıt no {number}"
+
+msgid "Cancel"
+msgstr "Vazgeç"
+
+msgid "Choose the SD card files"
+msgstr "SD kart dosyalarını seçin"
+
+msgid "Import"
+msgstr "İçe aktar"
+
+msgid "Scale files (CSV)"
+msgstr "Tartı dosyaları (CSV)"
+
+msgid "All files"
+msgstr "Tüm dosyalar"
+
+msgid "Could not read the file"
+msgstr "Dosya okunamadı"
+
+msgid "Import finished"
+msgstr "İçe aktarma tamamlandı"
+
+msgid "{n} was already saved"
+msgid_plural "{n} were already saved"
+msgstr[0] "{n} tanesi zaten kayıtlıydı"
+msgstr[1] "{n} tanesi zaten kayıtlıydı"
+
+msgid "Export measurements"
+msgstr "Ölçümleri dışa aktar"
+
+msgid "Save"
+msgstr "Kaydet"
+
+msgid "measurements"
+msgstr "olcumler"
+
+msgid "Could not write the file"
+msgstr "Dosya yazılamadı"
+
+msgid "Exported"
+msgstr "Dışa aktarıldı"
+
+msgid "Preparing a device report; listening continues afterwards."
+msgstr "Cihaz raporu hazırlanıyor; dinleme rapor bitince sürecek."
+
+msgid "Tell us about your device"
+msgstr "Cihazınızı tanıtın"
+
+msgid ""
+"This report helps us learn your device's data format. The client number is "
+"removed before the report is written. Measure yourself or a test person."
+msgstr ""
+"Bu rapor, cihazınızın veri biçimini öğrenmemize yardım eder. Danışan numarası "
+"rapora yazılmadan silinir. Ölçümü kendinizle ya da bir test kişisiyle yapın."
+
+msgid "Device model, e.g. MC-780MA"
+msgstr "Cihaz modeli, ör. MC-780MA"
+
+msgid "Printed on the label under the device"
+msgstr "Cihazın altındaki etikette yazar"
+
+msgid "Start measurement"
+msgstr "Ölçümü başlat"
+
+msgid "From an SD card file…"
+msgstr "SD kart dosyasından…"
+
+msgid "With Bluetooth…"
+msgstr "Bluetooth ile…"
+
+msgid "Port: {port} · Speed: {baud}"
+msgstr "Port: {port} · Hız: {baud}"
+
+msgid "not selected"
+msgstr "seçilmedi"
+
+msgid "Choose the Bluetooth device"
+msgstr "Bluetooth cihazını seçin"
+
+msgid "Turn the scale on. Searching for nearby devices; choose your scale in the list."
+msgstr "Tartıyı açın. Yakındaki cihazlar aranıyor; listeden tartınızı seçin."
+
+msgid "Back"
+msgstr "Geri"
+
+msgid "Search again"
+msgstr "Yeniden ara"
+
+msgid "Choose and start measuring"
+msgstr "Seç ve ölçüme başla"
+
+msgid "Take a measurement on the device now"
+msgstr "Şimdi cihazda ölçüm yapın"
+
+msgid ""
+"Step on the scale and complete the measurement. When data arrives the next "
+"step opens automatically (waiting up to 3 minutes)."
+msgstr ""
+"Tartıya çıkıp ölçümü tamamlayın. Veri gelince otomatik olarak sonraki adıma "
+"geçilir (en fazla 3 dakika beklenir)."
+
+msgid "Weight on the display"
+msgstr "Ekrandaki kilo"
+
+msgid "Weight shown on the display, e.g. 72.4 (optional)"
+msgstr "Ekranda görünen kilo, ör. 72,4 (isteğe bağlı)"
+
+msgid "Save report"
+msgstr "Raporu kaydet"
+
+msgid "Report ready"
+msgstr "Rapor hazır"
+
+msgid "This measurement does not belong to a real client"
+msgstr "Bu ölçüm gerçek bir danışana ait değildir"
+
+msgid "Tick this if you measured yourself or a test person"
+msgstr "Ölçümü kendiniz ya da bir test kişisi üzerinde yaptıysanız işaretleyin"
+
+msgid "Open folder"
+msgstr "Klasörü aç"
+
+msgid "Close"
+msgstr "Kapat"
+
+msgid "Send"
+msgstr "Gönder"
+
+msgid "Open the GitHub form"
+msgstr "GitHub formunu aç"
+
+msgid "OK"
+msgstr "Tamam"
+
+msgid "In the form, type the device model and drag the report file into the “Report file” box."
+msgstr "Formda cihaz modelini yazıp rapor dosyasını “Rapor dosyası” kutusuna sürükleyin."
+
+msgid "Sending..."
+msgstr "Gönderiliyor..."
+
+msgid "Could not send:"
+msgstr "Gönderilemedi:"
+
+msgid "Sent, thank you!"
+msgstr "Gönderildi, teşekkürler!"
+
+msgid "Your report number: {id}"
+msgstr "Rapor numaranız: {id}"
+
+msgid "Unnamed device"
+msgstr "Adsız cihaz"
+
+msgid "No device found. Turn the scale on and press “Search again”."
+msgstr "Cihaz bulunamadı. Tartıyı açıp “Yeniden ara”ya basın."
+
+msgid "{n} Bluetooth notification received from the device."
+msgid_plural "{n} Bluetooth notifications received from the device."
+msgstr[0] "Cihazdan {n} Bluetooth bildirimi alındı."
+msgstr[1] "Cihazdan {n} Bluetooth bildirimi alındı."
+
+msgid "Choose the scale's port in the main window."
+msgstr "Ana penceredeki listeden tartının portunu seçin."
+
+msgid "{n} byte of data received from the device."
+msgid_plural "{n} bytes of data received from the device."
+msgstr[0] "Cihazdan {n} bayt veri alındı."
+msgstr[1] "Cihazdan {n} bayt veri alındı."
+
+msgid "If you type the weight shown on the device display, verifying the data is much easier."
+msgstr "Cihaz ekranında gördüğünüz kiloyu yazarsanız veriyi doğrulamamız kolaylaşır."
+
+msgid ""
+"No data arrived from the device. You can still send the report; the device "
+"structure has been added to it. For wired devices check the cable and the "
+"speed setting; Bluetooth devices may wait for a command from the vendor's app "
+"before sending data."
+msgstr ""
+"Cihazdan hiç veri gelmedi. Yine de raporu gönderebilirsiniz; cihazın yapısı "
+"rapora eklendi. Kablolu cihazlarda kabloyu ve hız ayarını kontrol edin; "
+"Bluetooth cihazlar veri göndermeden önce üreticinin uygulamasından komut "
+"bekliyor olabilir."
+
+msgid "Choose the SD card file"
+msgstr "SD kart dosyasını seçin"
+
+msgid "Choose"
+msgstr "Seç"
+
+msgid "Could not save the report"
+msgstr "Rapor kaydedilemedi"
+
+msgid "The report was saved to:"
+msgstr "Rapor şu dosyaya kaydedildi:"
+
+msgid "Tartım desktop interface"
+msgstr "Tartım masaüstü arayüzü"
+
+msgid "SQLite file"
+msgstr "SQLite dosyası"

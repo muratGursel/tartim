@@ -1,5 +1,6 @@
-"""Uçtan uca test: socat ile sanal seri port çifti kurulur, bir uca sanal tartı
-yazar, diğer uçtan 'tartim dinle' okur. Linux, socat ve pyserial gerektirir."""
+"""End-to-end test: socat creates a pair of virtual serial ports, a virtual
+scale writes to one end and 'tartim listen' reads the other. Needs Linux, socat
+and pyserial."""
 
 import os
 import shutil
@@ -20,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 @unittest.skipUnless(sys.platform.startswith("linux") and shutil.which("socat") and serial,
-                     "Linux + socat + pyserial gerekli")
+                     "Linux + socat + pyserial required")
 class SerialEndToEndTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -42,29 +43,29 @@ class SerialEndToEndTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def _tartim(self, *args, **kwargs):
-        return subprocess.Popen([sys.executable, "-m", "tartim", "--veritabani", str(self.db),
+        return subprocess.Popen([sys.executable, "-m", "tartim", "--database", str(self.db),
                                  *args], env=self.env, text=True, **kwargs)
 
     def test_listen_receives_simulated_measurements(self):
-        listener = self._tartim("dinle", "--port", str(self.pc), "--adet", "3",
+        listener = self._tartim("listen", "--port", str(self.pc), "--count", "3",
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # Port açılmadan gönderilen veri kaybolur (pyserial açılışta giriş
-        # tamponunu boşaltır); dinleyicinin hazır olduğunu söylemesini bekle.
+        # Data sent before the port is open is lost (pyserial flushes the input
+        # buffer when opening); wait until the listener says it is ready.
         ready = threading.Event()
-        threading.Thread(target=lambda: ready.set() if "dinleniyor" in
+        threading.Thread(target=lambda: ready.set() if "Listening on" in
                          listener.stderr.readline() else None, daemon=True).start()
-        self.assertTrue(ready.wait(30), "dinleyici başlamadı")
-        sim = self._tartim("simule", "--port", str(self.scale), "--adet", "3",
-                           "--aralik", "0.2", "--tohum", "7", stderr=subprocess.DEVNULL)
+        self.assertTrue(ready.wait(30), "the listener did not start")
+        sim = self._tartim("simulate", "--port", str(self.scale), "--count", "3",
+                           "--interval", "0.2", "--seed", "7", stderr=subprocess.DEVNULL)
         self.assertEqual(sim.wait(timeout=20), 0)
         out, err = listener.communicate(timeout=20)
         self.assertEqual(listener.returncode, 0, err)
-        self.assertEqual(out.count("--- Ölçüm: MC-780"), 3)
-        self.assertIn("Kilo", out)
+        self.assertEqual(out.count("--- Measurement: MC-780"), 3)
+        self.assertIn("Weight", out)
 
-        listed = self._tartim("listele", stdout=subprocess.PIPE)
+        listed = self._tartim("list", stdout=subprocess.PIPE)
         lines = listed.communicate(timeout=20)[0].strip().splitlines()
-        self.assertEqual(len(lines), 4)  # başlık + 3 ölçüm
+        self.assertEqual(len(lines), 4)  # header + 3 measurements
 
 
 if __name__ == "__main__":

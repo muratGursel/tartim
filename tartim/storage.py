@@ -1,7 +1,7 @@
-"""Ölçümlerin yerel SQLite veritabanında saklanması.
+"""Storing measurements in a local SQLite database.
 
-Vücut ölçümleri KVKK kapsamında özel nitelikli kişisel veridir. Veritabanı
-dosyası yalnızca sahibinin okuyabileceği izinlerle (0600) oluşturulur.
+Body measurements are health data (special category personal data under KVKK
+and GDPR). The database file is created readable by its owner only (0600).
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .fields import describe
+from .i18n import _
 from .protocol import Framer, Measurement, parse
 
 SCHEMA = """
@@ -58,7 +59,7 @@ class Store:
         self.close()
 
     def add(self, m: Measurement, source: str) -> int | None:
-        """Ölçümü ekler. Aynı ham kayıt daha önce eklendiyse None döner."""
+        """Adds a measurement. Returns None if the same raw record was added before."""
         measured = m.measured_at()
         with self._db:
             cur = self._db.execute(
@@ -94,8 +95,8 @@ class Store:
         return [parse(row["raw"]) for row in self.list(**kwargs)]
 
     def import_files(self, paths) -> tuple[int, int, int]:
-        """SD kart ya da ham kayıt dosyalarını içe aktarır.
-        (eklenen, tekrar olduğu için atlanan, tanınmayan) sayılarını döndürür."""
+        """Imports SD card or raw capture files.
+        Returns (added, skipped as duplicates, unrecognized) counts."""
         added = skipped = unknown = 0
         for path in map(Path, paths):
             framer = Framer()
@@ -103,14 +104,14 @@ class Store:
                 m = parse(record)
                 if not m.recognized:
                     unknown += 1
-                elif self.add(m, source=f"dosya:{path.name}"):
+                elif self.add(m, source=f"file:{path.name}"):
                     added += 1
                 else:
                     skipped += 1
         return added, skipped, unknown
 
     def export_csv(self, path, subject_id: str | None = None) -> int:
-        """Excel ve LibreOffice'in doğrudan açabileceği CSV (; ayraçlı, BOM'lu)."""
+        """CSV that Excel and LibreOffice open directly (; separated, with BOM)."""
         rows = list(reversed(self.list(subject_id=subject_id)))
         codes: list[str] = []
         for r in rows:
@@ -119,7 +120,7 @@ class Store:
                     codes.append(code)
         with open(path, "w", newline="", encoding="utf-8-sig") as fh:
             writer = csv.writer(fh, delimiter=";")
-            writer.writerow(["No", "Kayıt zamanı"] + [describe(c).label for c in codes])
+            writer.writerow([_("No"), _("Received at")] + [describe(c).name for c in codes])
             for r in rows:
                 values = json.loads(r["values_json"])
                 writer.writerow([r["id"], r["received_at"]] + [values.get(c, "") for c in codes])

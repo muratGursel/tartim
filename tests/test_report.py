@@ -11,7 +11,7 @@ from .test_protocol import SAMPLE
 
 
 class FakePort:
-    """Her read çağrısında sıradaki parçayı veren sahte seri port."""
+    """A fake serial port that returns the next chunk on every read."""
 
     def __init__(self, chunks):
         self.chunks = list(chunks)
@@ -80,7 +80,7 @@ class WizardTests(unittest.TestCase):
         self.assertEqual(len(asked), 2)
         self.assertIn("Port: /dev/ttyUSB0", said)
         self.assertTrue(port.closed)
-        self.assertEqual(report["mode"], "hizli")
+        self.assertEqual(report["mode"], "quick")
         self.assertEqual(report["device"]["model"], "MC-780MA")
         self.assertEqual(report["port"]["baudrate"], 9600)
         m = report["measurements"][0]
@@ -92,29 +92,29 @@ class WizardTests(unittest.TestCase):
     def test_quick_mode_without_data(self):
         report, asked, said = self._run(["BC-418"], port="/dev/ttyUSB0", timeout=0.1,
                                          port_opener=lambda s: FakePort([]))
-        self.assertIn("Hiç veri gelmedi", said)
+        self.assertIn("No data received", said)
         self.assertEqual(report["measurements"][0]["summary"]["bytes"], 0)
 
     def test_sd_card_file(self):
         sd = Path(self.tmp.name) / "20261016.CSV"
         sd.write_bytes((SAMPLE + "\r\n").encode())
         report, asked, _ = self._run(["MC-780", ""], files=[str(sd)])
-        self.assertEqual(report["device"]["connection"], "SD kart dosyası")
+        self.assertEqual(report["device"]["connection"], "sd-card-file")
         self.assertTrue(report["measurements"][0]["records"][0]["recognized"])
 
     def test_detailed_mode_compares_inputs_and_screen(self):
         port = FakePort([(SAMPLE + "\r\n").encode()])
-        answers = ["MC-780MA", "Tanita", "1.0", "varsayılan", "1", "/dev/ttyUSB0", "9600", "1",
-                   "2", "34", "165", "0.5",          # cihaza girilenler
-                   "62.4", "27.1", "", "", "", "", "4", "1350", "", "22.9",  # ekran
-                   "test notu"]
+        answers = ["MC-780MA", "Tanita", "1.0", "default", "1", "/dev/ttyUSB0", "9600", "1",
+                   "2", "34", "165", "0.5",          # entered on the device
+                   "62.4", "27.1", "", "", "", "", "4", "1350", "", "22.9",  # display
+                   "test note"]
         report, asked, said = self._run(answers, port_opener=lambda s: port, ports=[],
                                         detailed=True)
         m = report["measurements"][0]
         self.assertEqual(len(m["inputs"]), 4)
         self.assertTrue(all(c["matches_expected"] for c in m["inputs"] + m["screen"]))
-        self.assertEqual(report["notes"], "test notu")
-        self.assertIn("9 değerden 9 tanesi", said)
+        self.assertEqual(report["notes"], "test note")
+        self.assertIn("9 of 9 values matched", said)
 
 
 class SendChoiceTests(unittest.TestCase):
@@ -131,9 +131,9 @@ class SendChoiceTests(unittest.TestCase):
         import os
         ask, _ = scripted(answers)
         said = []
-        old = os.environ.get("TARTIM_RAPOR_ADRESI")
+        old = os.environ.get("TARTIM_REPORT_URL")
         if env is not None:
-            os.environ["TARTIM_RAPOR_ADRESI"] = env
+            os.environ["TARTIM_REPORT_URL"] = env
         try:
             run_wizard(Wizard(ask=ask, say=said.append), files=[str(self.sd)],
                        output=str(Path(self.tmp.name) / "r.json"),
@@ -141,30 +141,30 @@ class SendChoiceTests(unittest.TestCase):
         finally:
             if env is not None:
                 if old is None:
-                    del os.environ["TARTIM_RAPOR_ADRESI"]
+                    del os.environ["TARTIM_REPORT_URL"]
                 else:
-                    os.environ["TARTIM_RAPOR_ADRESI"] = old
+                    os.environ["TARTIM_REPORT_URL"] = old
         return "\n".join(said)
 
     def test_server_with_consent(self):
-        said = self._run(["MC-780", "", "1", "e", "deneme notu"])
-        self.assertEqual(self.sent, ["deneme notu"])
-        self.assertIn("Rapor numaranız: R1", said)
+        said = self._run(["MC-780", "", "1", "y", "test note"])
+        self.assertEqual(self.sent, ["test note"])
+        self.assertIn("Your report number: R1", said)
 
     def test_server_without_consent_is_not_sent(self):
-        said = self._run(["MC-780", "", "1", "h"])
+        said = self._run(["MC-780", "", "1", "n"])
         self.assertEqual(self.sent, [])
-        self.assertIn("gönderilmez", said)
+        self.assertIn("are not sent", said)
 
     def test_github_and_later(self):
         self.assertIn("issues/new", self._run(["MC-780", "", "2"]))
-        self.assertIn("rapor-gonder", self._run(["MC-780", "", "3"]))
+        self.assertIn("send-report", self._run(["MC-780", "", "3"]))
         self.assertEqual(self.sent, [])
 
     def test_server_option_can_be_disabled(self):
         said = self._run(["MC-780", "", "1"], env="")
-        self.assertNotIn("Proje sunucusuna", said)
-        self.assertIn("issues/new", said)  # 1. seçenek artık GitHub formu
+        self.assertNotIn("project server", said)
+        self.assertIn("issues/new", said)  # option 1 is now the GitHub form
         self.assertEqual(self.sent, [])
 
 
