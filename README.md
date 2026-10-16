@@ -41,7 +41,9 @@ depo klasöründe `python3 -m tartim`.
 Kurulumdan sonra uygulama menüsünde **Tartım** adıyla görünür; uçbirimden
 `tartim-arayuz` ile de açılır.
 
-![Tartım arayüzü (sentetik örnek veri)](docs/arayuz.png)
+![Tartım arayüzü (sentetik örnek veri)](docs/ekran/02-olcum.png)
+
+Adım adım anlatım için: **[Kullanım kılavuzu](docs/KULLANIM.md)**
 
 1. Tartının portunu seçip **Bağlan**'a basın.
 2. Cihazda ölçüm yapın; sonuç solda görünür ve otomatik kaydedilir.

@@ -26,6 +26,7 @@ from .report import (REPORT_FORM_URL, SCREEN_FIELDS, build_entry, capture,  # no
 from .storage import Store  # noqa: E402
 
 APP_ID = "io.github.muratgursel.Tartim"
+HELP_URL = "https://github.com/muratGursel/tartim/blob/main/docs/KULLANIM.md"
 BAUDS = ["9600", "4800", "19200", "38400"]
 HIDDEN_CODES = {"CS", "MO", "ID", "St"}
 
@@ -139,6 +140,10 @@ class MainWindow(Gtk.ApplicationWindow):
         report_button.set_tooltip_text("Geliştiricilere gönderilecek cihaz raporunu hazırla")
         report_button.connect("clicked", self.on_report)
         header.pack_end(report_button)
+        help_button = Gtk.Button(label="Yardım")
+        help_button.set_tooltip_text("Kullanım kılavuzunu aç")
+        help_button.connect("clicked", lambda *_: self.open_uri(HELP_URL))
+        header.pack_end(help_button)
         self.set_titlebar(header)
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=12)
@@ -310,6 +315,12 @@ class MainWindow(Gtk.ApplicationWindow):
             if code not in HIDDEN_CODES and code != "Wk":
                 self.detail_model.append([describe(code).label, _format(m, code)])
 
+    def open_uri(self, uri: str) -> None:
+        try:
+            Gtk.show_uri_on_window(self, uri, Gdk.CURRENT_TIME)
+        except GLib.Error as exc:
+            self.show_message(Gtk.MessageType.ERROR, "Açılamadı", f"{uri}\n{exc.message}")
+
     def show_message(self, kind: Gtk.MessageType, title: str, text: str) -> None:
         dialog = Gtk.MessageDialog(transient_for=self, modal=True, message_type=kind,
                                    buttons=Gtk.ButtonsType.OK, text=title)
@@ -362,9 +373,10 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def _bt_scanned(self, devices) -> bool:
         self.bt_button.set_sensitive(self.listener is None)
-        for device in devices:
+        # Bulunan cihazlar listenin başına, en güçlü sinyal en üstte olacak şekilde.
+        for device in reversed(devices):
             if device.address not in self.bt_devices:
-                self.port_combo.append(device.port, _bt_label(device))
+                self.port_combo.prepend(device.port, _bt_label(device))
             self.bt_devices[device.address] = device
         if devices:
             self.port_combo.get_child().set_text(_bt_label(devices[0]))
