@@ -1,42 +1,46 @@
-name: Cihaz raporu
-description: 'tartim rapor ile ya da arayüzdeki "Cihaz raporu" düğmesiyle hazırlanan dosyayı gönderin'
-title: "Cihaz raporu: "
+name: Cihaz raporu / Device report
+description: 'Uygulamadaki "Cihaz raporu" ile hazırlanan dosyayı gönderin / Send the file made with "Device report"'
+title: "Cihaz raporu / Device report: "
 labels: ["cihaz-raporu"]
 body:
   - type: markdown
     attributes:
       value: |
         Katkınız için teşekkürler! Raporu Tartım uygulamasındaki **Cihaz raporu**
-        düğmesiyle ya da `tartim rapor` komutuyla hazırlayın. Oluşan
-        `tartim-rapor-....json` dosyasını aşağıdaki **Rapor dosyası** kutusuna
-        sürükleyip bırakın. Adım adım anlatım:
+        düğmesiyle ya da `tartim rapor` komutuyla hazırlayın ve oluşan
+        `tartim-report-....json` dosyasını aşağıdaki kutuya sürükleyin.
         [Kullanım kılavuzu](https://github.com/muratGursel/tartim/blob/main/docs/KULLANIM.md#7-cihaz-raporu-hazırlamak-ve-göndermek)
 
-        **Gerçek bir danışanın ölçümünü göndermeyin.** Ölçümü kendinizle ya da bir
-        test kişisiyle yapın.
+        Thank you! Prepare the report with the **Device report** button in Tartım
+        or with `tartim report`, then drag the `tartim-report-....json` file into
+        the box below.
+        [User guide](https://github.com/muratGursel/tartim/blob/main/docs/USER_GUIDE.md#7-preparing-and-sending-a-device-report)
+
+        **Gerçek bir danışanın ölçümünü göndermeyin / Never send a real client's measurement.**
+        Ölçümü kendinizle ya da bir test kişisiyle yapın / Measure yourself or a test person.
   - type: input
     id: model
     attributes:
-      label: Cihaz modeli
-      placeholder: ör. MC-780MA
+      label: Cihaz modeli / Device model
+      placeholder: "ör. / e.g. MC-780MA"
     validations:
       required: true
   - type: textarea
     id: rapor
     attributes:
-      label: Rapor dosyası
-      description: JSON dosyasını buraya sürükleyin.
+      label: Rapor dosyası / Report file
+      description: JSON dosyasını buraya sürükleyin / Drag the JSON file here.
     validations:
       required: true
   - type: textarea
     id: notlar
     attributes:
-      label: Notlar
-      description: Karşılaştığınız sorunlar, cihaz ayarları vb. (isteğe bağlı)
+      label: Notlar / Notes
+      description: Sorunlar, cihaz ayarları vb. (isteğe bağlı) / Problems, device settings etc. (optional)
   - type: checkboxes
     id: onay
     attributes:
-      label: Onay
+      label: Onay / Confirmation
       options:
-        - label: Bu ölçüm gerçek bir danışana ait değildir.
+        - label: Bu ölçüm gerçek bir danışana ait değildir / This measurement does not belong to a real client.
           required: true
