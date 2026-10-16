@@ -1,0 +1,40 @@
+name: Cihaz raporu
+description: "tartim rapor" ile hazırlanan dosyayı gönderin
+title: "Cihaz raporu: "
+labels: ["cihaz-raporu"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Katkınız için teşekkürler! Raporu hazırlamak için tartıyı bilgisayara takıp
+        `tartim rapor` komutunu çalıştırın. Oluşan `tartim-rapor-....json` dosyasını
+        aşağıya sürükleyip bırakın.
+
+        **Gerçek bir danışanın ölçümünü göndermeyin.** Ölçümü kendinizle ya da bir
+        test kişisiyle yapın.
+  - type: input
+    id: model
+    attributes:
+      label: Cihaz modeli
+      placeholder: ör. MC-780MA
+    validations:
+      required: true
+  - type: textarea
+    id: rapor
+    attributes:
+      label: Rapor dosyası
+      description: JSON dosyasını buraya sürükleyin.
+    validations:
+      required: true
+  - type: textarea
+    id: notlar
+    attributes:
+      label: Notlar
+      description: Karşılaştığınız sorunlar, cihaz ayarları vb. (isteğe bağlı)
+  - type: checkboxes
+    id: onay
+    attributes:
+      label: Onay
+      options:
+        - label: Bu ölçüm gerçek bir danışana ait değildir.
+          required: true

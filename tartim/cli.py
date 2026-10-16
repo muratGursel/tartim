@@ -165,6 +165,12 @@ def cmd_export(args) -> int:
     return 0
 
 
+def cmd_report(args) -> int:
+    from .report import main_from_args  # noqa: PLC0415
+
+    return main_from_args(args)
+
+
 def cmd_simulate(args) -> int:
     from .simulator import synthetic_record  # noqa: PLC0415
 
@@ -217,6 +223,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--cikti", required=True)
     s.add_argument("--danisan")
     s.set_defaults(func=cmd_export)
+
+    s = sub.add_parser("rapor", help="Geliştiricilere gönderilecek cihaz raporu hazırla")
+    s.add_argument("--port", help="Belirtilmezse otomatik bulunur")
+    s.add_argument("--baud", type=int, help="varsayılan: 9600")
+    s.add_argument("--sure", type=float, default=180, help="Ölçüm için bekleme süresi, saniye")
+    s.add_argument("--cikti", help="Rapor dosyası (varsayılan: tartim-rapor-MODEL-TARIH.json)")
+    s.add_argument("--dosya", nargs="+", help="Seri port yerine SD kart dosyalarını kullan")
+    s.add_argument("--ayrintili", action="store_true",
+                   help="Daha fazla soru sor (cihaz ayarları, ekrandaki tüm değerler)")
+    s.set_defaults(func=cmd_report)
 
     s = sub.add_parser("simule", help="Sanal tartı: porta sentetik ölçüm gönder")
     _port_args(s)
