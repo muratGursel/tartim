@@ -6,13 +6,15 @@ dosyası yalnızca sahibinin okuyabileceği izinlerle (0600) oluşturulur.
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from .protocol import Measurement, parse
+from .fields import describe
+from .protocol import Framer, Measurement, parse
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS measurements (
@@ -90,3 +92,35 @@ class Store:
 
     def measurements(self, **kwargs) -> list[Measurement]:
         return [parse(row["raw"]) for row in self.list(**kwargs)]
+
+    def import_files(self, paths) -> tuple[int, int, int]:
+        """SD kart ya da ham kayıt dosyalarını içe aktarır.
+        (eklenen, tekrar olduğu için atlanan, tanınmayan) sayılarını döndürür."""
+        added = skipped = unknown = 0
+        for path in map(Path, paths):
+            framer = Framer()
+            for record in framer.feed(path.read_bytes()) + framer.flush():
+                m = parse(record)
+                if not m.recognized:
+                    unknown += 1
+                elif self.add(m, source=f"dosya:{path.name}"):
+                    added += 1
+                else:
+                    skipped += 1
+        return added, skipped, unknown
+
+    def export_csv(self, path, subject_id: str | None = None) -> int:
+        """Excel ve LibreOffice'in doğrudan açabileceği CSV (; ayraçlı, BOM'lu)."""
+        rows = list(reversed(self.list(subject_id=subject_id)))
+        codes: list[str] = []
+        for r in rows:
+            for code in json.loads(r["values_json"]):
+                if code not in codes and code != "CS":
+                    codes.append(code)
+        with open(path, "w", newline="", encoding="utf-8-sig") as fh:
+            writer = csv.writer(fh, delimiter=";")
+            writer.writerow(["No", "Kayıt zamanı"] + [describe(c).label for c in codes])
+            for r in rows:
+                values = json.loads(r["values_json"])
+                writer.writerow([r["id"], r["received_at"]] + [values.get(c, "") for c in codes])
+        return len(rows)

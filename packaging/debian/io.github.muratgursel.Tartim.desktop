@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Tartım
+GenericName=Vücut analizörü okuyucusu
+Comment=Vücut kompozisyon analizöründen ölçüm alın ve saklayın
+Exec=tartim-arayuz
+Icon=io.github.muratgursel.Tartim
+Terminal=false
+Categories=Science;MedicalSoftware;
+Keywords=tartı;tanita;vücut;analiz;diyet;ölçüm;
+StartupNotify=true

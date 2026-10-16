@@ -20,6 +20,14 @@ class Field:
     unit: str = ""
     kind: str = "float"  # float | int | str
     confirmed: bool = False
+    choices: tuple[tuple[int, str], ...] = ()
+
+    def display(self, value: object) -> str:
+        """Değeri birimiyle ya da anlamıyla (ör. cinsiyet: Kadın) yazar."""
+        for code, name in self.choices:
+            if value == code:
+                return name
+        return f"{value} {self.unit}".rstrip()
 
 
 _FIELDS = [
@@ -32,8 +40,8 @@ _FIELDS = [
     Field("TI", "Saat", kind="str"),
     Field("Ti", "Saat", kind="str"),
     # Girdi bilgileri
-    Field("Bt", "Vücut tipi (0: standart, 2: atletik)", kind="int"),
-    Field("GE", "Cinsiyet (1: erkek, 2: kadın)", kind="int"),
+    Field("Bt", "Vücut tipi", kind="int", choices=((0, "Standart"), (2, "Atletik"))),
+    Field("GE", "Cinsiyet", kind="int", choices=((1, "Erkek"), (2, "Kadın"))),
     Field("AG", "Yaş", "yıl", kind="int"),
     Field("Hm", "Boy", "cm"),
     Field("Pt", "Kıyafet ağırlığı (dara)", "kg"),

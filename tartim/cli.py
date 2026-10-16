@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import random
 import sys
 import time
 from datetime import datetime
-from pathlib import Path
 
 from . import __version__
 from .fields import describe
-from .protocol import Framer, Measurement, parse
+from .protocol import Measurement, parse
 from .storage import Store
 
 
@@ -28,7 +26,7 @@ def _print_measurement(m: Measurement, out=sys.stdout) -> None:
         if code == "CS":
             continue
         f = describe(code)
-        shown = f"{value} {f.unit}".rstrip()
+        shown = f.display(value)
         mark = "" if f.confirmed else " *"
         print(f"  {f.label:<38} {shown}{mark}", file=out)
     print("  (* alan anlamı henüz gerçek cihazla doğrulanmadı)", file=out)
@@ -113,20 +111,8 @@ def cmd_raw(args) -> int:
 
 def cmd_import(args) -> int:
     """SD karttaki ya da ham kayıt dosyalarındaki ölçümleri içe aktarır."""
-    added = skipped = unknown = 0
     with Store(args.veritabani) as store:
-        for path in args.dosyalar:
-            framer = Framer()
-            records = framer.feed(Path(path).read_bytes()) + framer.flush()
-            for record in records:
-                m = parse(record)
-                if not m.recognized:
-                    unknown += 1
-                    continue
-                if store.add(m, source=f"dosya:{Path(path).name}"):
-                    added += 1
-                else:
-                    skipped += 1
+        added, skipped, unknown = store.import_files(args.dosyalar)
     print(f"{added} ölçüm eklendi, {skipped} tekrar atlandı, {unknown} kayıt tanınmadı.")
     return 0
 
@@ -149,20 +135,17 @@ def cmd_list(args) -> int:
 
 def cmd_export(args) -> int:
     with Store(args.veritabani) as store:
-        rows = list(reversed(store.list(subject_id=args.danisan)))
-    codes: list[str] = []
-    for r in rows:
-        for code in json.loads(r["values_json"]):
-            if code not in codes and code != "CS":
-                codes.append(code)
-    with open(args.cikti, "w", newline="", encoding="utf-8-sig") as fh:
-        writer = csv.writer(fh, delimiter=";")
-        writer.writerow(["No", "Kayıt zamanı"] + [describe(c).label for c in codes])
-        for r in rows:
-            values = json.loads(r["values_json"])
-            writer.writerow([r["id"], r["received_at"]] + [values.get(c, "") for c in codes])
-    print(f"{len(rows)} ölçüm {args.cikti} dosyasına yazıldı.")
+        count = store.export_csv(args.cikti, subject_id=args.danisan)
+    print(f"{count} ölçüm {args.cikti} dosyasına yazıldı.")
     return 0
+
+
+def cmd_gui(args) -> int:
+    from .gui import main as gui_main  # noqa: PLC0415
+
+    argv = (["--veritabani", args.veritabani] if args.veritabani else []) + \
+        (["--port", args.port] if args.port else [])
+    return gui_main(argv)
 
 
 def cmd_report(args) -> int:
@@ -223,6 +206,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--cikti", required=True)
     s.add_argument("--danisan")
     s.set_defaults(func=cmd_export)
+
+    s = sub.add_parser("arayuz", help="Masaüstü arayüzünü aç")
+    s.add_argument("--port", help="Açılışta seçili olacak port")
+    s.set_defaults(func=cmd_gui)
 
     s = sub.add_parser("rapor", help="Geliştiricilere gönderilecek cihaz raporu hazırla")
     s.add_argument("--port", help="Belirtilmezse otomatik bulunur")

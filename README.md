@@ -36,7 +36,21 @@ anakartta ise (`/dev/ttyS*`) `sudo usermod -aG dialout $USER` gerekir.
 Geliştirme için kaynaktan çalıştırmak: `sudo apt install python3-serial` ve
 depo klasöründe `python3 -m tartim`.
 
-## Kullanım
+## Masaüstü arayüzü
+
+Kurulumdan sonra uygulama menüsünde **Tartım** adıyla görünür; uçbirimden
+`tartim-arayuz` ile de açılır.
+
+![Tartım arayüzü (sentetik örnek veri)](docs/arayuz.png)
+
+1. Tartının portunu seçip **Bağlan**'a basın.
+2. Cihazda ölçüm yapın; sonuç solda görünür ve otomatik kaydedilir.
+3. Geçmiş ölçümler sağda listelenir. **SD karttan içe aktar** ve **Excel için
+   dışa aktar** düğmeleri buradadır.
+4. **Cihaz raporu** düğmesi, geliştiricilere gönderilecek raporu üç adımda
+   hazırlar.
+
+## Komut satırı
 
 ```sh
 tartim portlar                         # bağlı seri portlar
@@ -53,7 +67,7 @@ Projenin gelişmesi için en çok ihtiyaç duyduğumuz şey farklı cihazlardan
 gerçek ölçüm verisi. Tartıyı bilgisayara takın ve şunu çalıştırın:
 
 ```sh
-tartim rapor
+tartim rapor          # ya da arayüzde "Cihaz raporu" düğmesi
 ```
 
 Program yalnızca cihaz modelini ve ekranda gördüğünüz kiloyu sorar, portu
@@ -94,6 +108,9 @@ python3 -m unittest -v
 ```
 
 Seri port testi Linux'ta `socat` ve `python3-serial` kuruluysa çalışır.
+Arayüz testi bir ekran ister; ekransız bir sunucuda GTK Broadway ile
+çalıştırılabilir:
+`broadwayd :5 & GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 python3 -m unittest`
 
 ## Kişisel veriler (KVKK)
 
@@ -107,7 +124,9 @@ hata bildirimlerine ya da bu depoya eklemeyin.
 - [ ] Gerçek MC-780 / BC-418 cihazlarla alan kodlarını doğrulamak
 - [ ] `CS` sağlama değerini doğrulamak
 - [ ] Uzak kip: boy, yaş ve cinsiyetin bilgisayardan cihaza gönderilmesi
-- [ ] Danışan kaydı ve grafikli masaüstü arayüzü (GTK)
+- [x] Masaüstü arayüzü (GTK)
+- [ ] Danışan kaydı ve gelişim grafikleri
+- [ ] Bluetooth bağlantılı cihazlar (ör. Tartı FAST)
 - [ ] PDF ölçüm raporu
 - [x] `.deb` paketi ve tek komutla kurulum
 - [ ] Pardus Mağazası'na başvuru

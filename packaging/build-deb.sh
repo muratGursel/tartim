@@ -16,10 +16,15 @@ trap 'rm -rf "$BUILD"' EXIT
 PKG="$BUILD/tartim"
 
 install -d "$PKG/DEBIAN" "$PKG/usr/bin" "$PKG/usr/lib/python3/dist-packages/tartim" \
-    "$PKG/usr/lib/udev/rules.d" "$PKG/usr/share/doc/tartim"
+    "$PKG/usr/lib/udev/rules.d" "$PKG/usr/share/doc/tartim" "$PKG/usr/share/applications" \
+    "$PKG/usr/share/icons/hicolor/scalable/apps"
 
 install -m 644 "$ROOT"/tartim/*.py "$PKG/usr/lib/python3/dist-packages/tartim/"
 install -m 755 "$ROOT/packaging/debian/tartim" "$PKG/usr/bin/tartim"
+install -m 755 "$ROOT/packaging/debian/tartim-arayuz" "$PKG/usr/bin/tartim-arayuz"
+install -m 644 "$ROOT/packaging/debian/io.github.muratgursel.Tartim.desktop" "$PKG/usr/share/applications/"
+install -m 644 "$ROOT/packaging/debian/io.github.muratgursel.Tartim.svg" \
+    "$PKG/usr/share/icons/hicolor/scalable/apps/"
 install -m 644 "$ROOT/packaging/debian/70-tartim.rules" "$PKG/usr/lib/udev/rules.d/"
 install -m 644 "$ROOT/README.md" "$ROOT/docs/PROTOKOL.md" "$PKG/usr/share/doc/tartim/"
 install -m 644 "$ROOT/packaging/debian/copyright" "$PKG/usr/share/doc/tartim/copyright"

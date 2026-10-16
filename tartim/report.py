@@ -23,6 +23,7 @@ from .fields import describe
 from .protocol import Framer, parse
 
 SCHEMA_VERSION = 1
+REPORT_FORM_URL = "https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml"
 
 # Cihaz ekranından okunacak sonuçlar: (soru, beklenen kod)
 SCREEN_FIELDS = [
@@ -123,7 +124,8 @@ def port_details(device: str) -> dict:
 
 
 def capture(port, timeout: float, idle: float = 2.0,
-            clock: Callable[[], float] = time.monotonic) -> tuple[bytes, list[list[int]]]:
+            clock: Callable[[], float] = time.monotonic,
+            cancelled: Callable[[], bool] = lambda: False) -> tuple[bytes, list[list[int]]]:
     """İlk bayt gelene kadar en fazla ``timeout`` saniye bekler; veri geldikten
     sonra ``idle`` saniye sessizlik olunca biter. Bayt akışını ve her parçanın
     zamanlamasını (ms, bayt sayısı) döndürür."""
@@ -131,7 +133,7 @@ def capture(port, timeout: float, idle: float = 2.0,
     last = None
     data = bytearray()
     timing: list[list[int]] = []
-    while True:
+    while not cancelled():
         now = clock()
         if last is None and now - start > timeout:
             break
@@ -202,8 +204,9 @@ class Wizard:
         return answer.startswith("e")
 
 
-def _measurement_entry(w: Wizard, data: bytes, timing: list, source: str,
-                       detailed: bool) -> dict:
+def build_entry(data: bytes, timing: list, source: str) -> tuple[dict, dict | None]:
+    """Bir ölçüm denemesinin rapor kaydını hazırlar. İkinci değer, ekrandaki
+    değerlerin karşılaştırılacağı kayıttır (veri yoksa None)."""
     masked, count = mask_subject_ids(data)
     framer = Framer()
     records = framer.feed(masked) + framer.flush()
@@ -213,9 +216,30 @@ def _measurement_entry(w: Wizard, data: bytes, timing: list, source: str,
              "subject_ids_masked": count, "records": analyses,
              "inputs": [], "screen": []}
     measured = [a for a in analyses if a["tokens"]]
-    if not measured:
+    target = next((a for a in measured if a["recognized"]), measured[-1]) if measured else None
+    return entry, target
+
+
+def new_report(device: dict, mode: str) -> dict:
+    return {"schema": SCHEMA_VERSION,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "mode": mode, "system": system_info(), "device": device, "measurements": []}
+
+
+def save_report(report: dict, output: str | Path | None = None,
+                directory: Path | None = None) -> Path:
+    model = re.sub(r"[^A-Za-z0-9-]+", "", report["device"].get("model", "")) or "cihaz"
+    name = f"tartim-rapor-{model}-{datetime.now():%Y%m%d-%H%M%S}.json"
+    path = Path(output) if output else (directory or Path.cwd()) / name
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def _measurement_entry(w: Wizard, data: bytes, timing: list, source: str,
+                       detailed: bool) -> dict:
+    entry, target = build_entry(data, timing, source)
+    if target is None:
         return entry
-    target = next((a for a in measured if a["recognized"]), measured[-1])
     if not detailed:
         # Hızlı kip: yalnızca kilo sorulur; kaydı doğrulamak için bu yeterli bir ipucu.
         label, code = SCREEN_FIELDS[0]
@@ -288,10 +312,7 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
                 files = [w.ask("SD karttaki dosyanın yolu", required=True)]
     device["connection"] = "SD kart dosyası" if files else "seri port"
 
-    report: dict = {"schema": SCHEMA_VERSION,
-                    "created_at": datetime.now().isoformat(timespec="seconds"),
-                    "mode": "ayrintili" if detailed else "hizli",
-                    "system": system_info(), "device": device, "measurements": []}
+    report = new_report(device, "ayrintili" if detailed else "hizli")
 
     if files:
         for path in files:
@@ -333,12 +354,10 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
 
     if detailed:
         report["notes"] = w.ask("\nEklemek istediğiniz not (sorunlar, cihaz ayarları vb.)")
-    model = re.sub(r"[^A-Za-z0-9-]+", "", device["model"]) or "cihaz"
-    path = Path(output or f"tartim-rapor-{model}-{datetime.now():%Y%m%d-%H%M%S}.json")
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    path = save_report(report, output)
     w.say(f"\nRapor hazır: {path.resolve()}\n"
           "Bu dosyayı şu adresteki 'Cihaz raporu' formuna ekleyerek gönderebilirsiniz:\n"
-          "https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml")
+          f"{REPORT_FORM_URL}")
     return path
 
 
