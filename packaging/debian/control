@@ -1,7 +1,7 @@
 Package: tartim
 Version: @VERSION@
 Architecture: all
-Maintainer: Murat GÜRSEL <murat.gursel@knicode.com>
+Maintainer: Murat GÜRSEL <muratgursel@gmail.com>
 Installed-Size: @SIZE@
 Depends: python3 (>= 3.11), python3-serial (>= 3.5), python3-gi, gir1.2-gtk-3.0
 Recommends: bluez
