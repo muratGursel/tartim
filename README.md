@@ -16,23 +16,61 @@ değildir.
 
 ## Kurulum (Pardus 23 / 25)
 
+Uçbirimde tek komut:
+
 ```sh
-sudo apt install python3-serial
-sudo usermod -aG dialout $USER   # seri port izni; sonra oturumu kapatıp açın
-git clone <depo-adresi> && cd tartim
-python3 -m tartim --surum
+curl -fsSL https://raw.githubusercontent.com/muratGursel/tartim/main/install.sh | sudo sh
 ```
+
+Ya da [Sürümler](https://github.com/muratGursel/tartim/releases) sayfasından
+`tartim_*_all.deb` dosyasını indirip kurun:
+
+```sh
+sudo apt install ./tartim_0.2.0_all.deb
+```
+
+Paket, oturum açmış kullanıcıya USB-seri portlara erişim izni veren bir udev
+kuralı da kurar; `dialout` grubuna eklenmeniz gerekmez. RS-232 portu doğrudan
+anakartta ise (`/dev/ttyS*`) `sudo usermod -aG dialout $USER` gerekir.
+
+Geliştirme için kaynaktan çalıştırmak: `sudo apt install python3-serial` ve
+depo klasöründe `python3 -m tartim`.
 
 ## Kullanım
 
 ```sh
-python3 -m tartim portlar                         # bağlı seri portlar
-python3 -m tartim dinle --port /dev/ttyUSB0       # ölçümleri göster ve kaydet
-python3 -m tartim ice-aktar /media/$USER/SD/*.CSV # SD karttan içe aktar
-python3 -m tartim listele --son 10
-python3 -m tartim disa-aktar --cikti olcumler.csv # Excel / LibreOffice için
-python3 -m tartim ham --port /dev/ttyUSB0         # yeni cihaz için ham veri
+tartim portlar                         # bağlı seri portlar
+tartim dinle --port /dev/ttyUSB0       # ölçümleri göster ve kaydet
+tartim ice-aktar /media/$USER/SD/*.CSV # SD karttan içe aktar
+tartim listele --son 10
+tartim disa-aktar --cikti olcumler.csv # Excel / LibreOffice için
+tartim ham --port /dev/ttyUSB0         # yeni cihaz için ham veri
 ```
+
+## Tartınız mı var? Cihaz raporu gönderin
+
+Projenin gelişmesi için en çok ihtiyaç duyduğumuz şey farklı cihazlardan
+gerçek ölçüm verisi. Tartıyı bilgisayara takın ve şunu çalıştırın:
+
+```sh
+tartim rapor
+```
+
+Program yalnızca cihaz modelini ve ekranda gördüğünüz kiloyu sorar, portu
+kendisi bulur. Siz ölçüm yaptığınızda gelen veriyi kaydeder ve bir
+`tartim-rapor-MODEL-TARIH.json` dosyası oluşturur. Danışan numarası dosyaya
+yazılmadan maskelenir. Bu dosyayı
+[Cihaz raporu formuyla](https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml)
+gönderin.
+
+- SD kart dosyası için: `tartim rapor --dosya /media/$USER/SD/20261016.CSV`
+- Daha fazla bilgi vermek isterseniz: `tartim rapor --ayrintili` (cihaz
+  ayarlarını, cihaza girilen boy/yaş/cinsiyeti ve ekrandaki tüm değerleri
+  sorar; değerleri veriyle karşılaştırıp hangi alanın neye karşılık geldiğini
+  gösterir)
+
+Ölçümü kendinizle ya da bir test kişisiyle yapın; gerçek bir danışanın
+ölçümünü göndermeyin.
 
 Port ayarları: `--baud 9600 --parite N --veri-biti 8 --dur-biti 1` (varsayılan).
 
@@ -71,14 +109,17 @@ hata bildirimlerine ya da bu depoya eklemeyin.
 - [ ] Uzak kip: boy, yaş ve cinsiyetin bilgisayardan cihaza gönderilmesi
 - [ ] Danışan kaydı ve grafikli masaüstü arayüzü (GTK)
 - [ ] PDF ölçüm raporu
-- [ ] `.deb` paketi ve Pardus Mağazası
+- [x] `.deb` paketi ve tek komutla kurulum
+- [ ] Pardus Mağazası'na başvuru
 - [ ] Diğer markalar için eklenti yapısı
 
 ## Katkı
 
-Elinizde farklı bir model varsa en değerli katkı, `tartim ham` ile alınmış bir
-örnek kayıttır (kişisel bilgileri çıkarılmış olarak). Bkz.
+Elinizde bir tartı varsa en değerli katkı `tartim rapor` ile hazırlanan
+dosyadır (yukarıya bakın). Protokol ayrıntıları:
 [docs/PROTOKOL.md](docs/PROTOKOL.md).
+
+Paketi kaynaktan derlemek için: `sh packaging/build-deb.sh`
 
 ## Lisans
 

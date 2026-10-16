@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    python3 -m compileall -q /usr/lib/python3/dist-packages/tartim || true
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm control --reload-rules || true
+        udevadm trigger --subsystem-match=tty --action=change || true
+    fi
+fi

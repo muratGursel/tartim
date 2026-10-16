@@ -1,0 +1,45 @@
+name: Test ve paket
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bağımlılıklar
+        run: sudo apt-get update -q && sudo apt-get install -y -q python3-serial socat
+      - name: Testler
+        run: python3 -m unittest -v
+
+  deb:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Paketi derle
+        id: build
+        run: echo "deb=$(sh packaging/build-deb.sh)" >> "$GITHUB_OUTPUT"
+      - name: Paketi kurup dene
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q "${{ steps.build.outputs.deb }}"
+          tartim --surum
+          tartim listele
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tartim-deb
+          path: dist/*.deb
+      - name: Sürümü yayımla
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb
+          generate_release_notes: true
