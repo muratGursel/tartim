@@ -159,6 +159,16 @@ dosyadır (yukarıya bakın). Protokol ayrıntıları:
 
 Paketi kaynaktan derlemek için: `sh packaging/build-deb.sh`
 
+## Rapor sunucusu
+
+Kullanıcılar cihaz raporlarını GitHub hesabı olmadan, uygulamadan tek tıkla
+gönderebilir. Raporlar `https://ldow.duckdns.org/tartim/rapor` adresindeki küçük
+bir servis tarafından denetlenip özel bir depoya iletilir; GitHub anahtarı
+yalnızca sunucuda durur. Kurulum ve güvenlik modeli:
+[server/KURULUM.md](server/KURULUM.md). Gönderim isteğe bağlıdır: kullanıcı GitHub
+formunu kullanabilir ya da hiç göndermeyebilir; kurumlar `TARTIM_RAPOR_ADRESI`
+ile kendi sunucularını verebilir ya da seçeneği kapatabilir.
+
 ## Lisans
 
 GPL-3.0-or-later. Bkz. [LICENSE](LICENSE).

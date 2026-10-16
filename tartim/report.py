@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import platform
 import re
 import sys
 import time
+import urllib.error
+import urllib.request
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -227,6 +230,50 @@ def build_entry(data: bytes, timing: list, source: str) -> tuple[dict, dict | No
     return entry, target
 
 
+DEFAULT_SERVER = "https://ldow.duckdns.org/tartim/rapor"
+
+
+SEND_OPTIONS = [
+    ("Proje sunucusuna gönder (hesap gerekmez)", "server"),
+    ("GitHub formuyla kendim göndereceğim", "github"),
+    ("Şimdilik gönderme, dosya bilgisayarımda kalsın", "later"),
+]
+
+
+def report_server() -> str | None:
+    """Rapor sunucusunun adresi. Kurum kendi sunucusunu TARTIM_RAPOR_ADRESI ile
+    verebilir; değişken boş bırakılırsa sunucuya gönderim seçeneği kapanır."""
+    return os.environ.get("TARTIM_RAPOR_ADRESI", DEFAULT_SERVER).strip() or None
+
+
+def send_report(report: dict, note: str = "", url: str | None = None, consent: bool = True,
+                timeout: float = 30) -> dict:
+    """Raporu proje sunucusuna HTTPS ile gönderir. Sunucunun yanıtını döndürür;
+    sorun olursa kullanıcıya gösterilecek açıklamayla RuntimeError verir."""
+    url = url or report_server()
+    if not url:
+        raise RuntimeError("Sunucuya gönderim bu kurulumda kapalı (TARTIM_RAPOR_ADRESI boş).")
+    data = json.dumps({"report": report, "note": note, "consent": consent},
+                      ensure_ascii=False).encode()
+    request = urllib.request.Request(
+        url, data=data, method="POST",
+        headers={"Content-Type": "application/json; charset=utf-8",
+                 "User-Agent": f"tartim/{__version__}"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as exc:
+        try:
+            message = json.load(exc).get("error")
+        except ValueError:
+            message = None
+        raise RuntimeError(message or f"Sunucu raporu kabul etmedi (HTTP {exc.code}).") from exc
+    except (urllib.error.URLError, OSError) as exc:
+        raise RuntimeError("Rapor sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edin; "
+                           "rapor dosyası bilgisayarınızda duruyor, daha sonra yeniden "
+                           "gönderebilirsiniz.") from exc
+
+
 def new_report(device: dict, mode: str) -> dict:
     return {"schema": SCHEMA_VERSION,
             "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -381,7 +428,9 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
                output: str | None = None, idle: float = 2.0,
                files: list[str] | None = None, detailed: bool = False,
                ports: list[tuple[str, str]] | None = None, bluetooth: bool = False,
-               bt_session: Callable | None = None) -> Path:
+               bt_session: Callable | None = None, send: Callable | None = None) -> Path:
+    """``send`` verilirse (ör. ``send_report``) rapor kaydedildikten sonra
+    kullanıcının onayıyla proje sunucusuna gönderilir."""
     w.say("=== tartim cihaz raporu ===\n"
           "Cihazınızın veri biçimini öğrenmemiz için bir rapor dosyası hazırlanacak.\n"
           "Danışan numarası maskelenir. Ölçümü kendinizle ya da bir test kişisiyle yapın.\n")
@@ -446,17 +495,60 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
     if detailed:
         report["notes"] = w.ask("\nEklemek istediğiniz not (sorunlar, cihaz ayarları vb.)")
     path = save_report(report, output)
-    w.say(f"\nRapor hazır: {path.resolve()}\n"
-          "Bu dosyayı şu adresteki 'Cihaz raporu' formuna ekleyerek gönderebilirsiniz:\n"
-          f"{REPORT_FORM_URL}")
+    w.say(f"\nRapor kaydedildi: {path.resolve()}")
+    if send is None:
+        return path
+    options = SEND_OPTIONS if report_server() else SEND_OPTIONS[1:]
+    w.say("\nRaporu nasıl göndermek istersiniz?")
+    choice = options[w.choose("Seçiminiz", [label for label, _ in options])][1]
+    if choice == "server":
+        if not w.yes("Bu ölçüm gerçek bir danışana değil, size ya da bir test kişisine mi ait?",
+                     default=False):
+            w.say("Gerçek danışan ölçümleri gönderilmez. Lütfen kendinizle ya da bir test "
+                  "kişisiyle yeni bir ölçüm yapın.")
+            return path
+        note = report.get("notes") or w.ask("Eklemek istediğiniz kısa bir not (isteğe bağlı)")
+        try:
+            result = send(report, note=note)
+        except RuntimeError as exc:
+            w.say(f"Gönderilemedi: {exc}\nDaha sonra yeniden denemek için: "
+                  f"tartim rapor-gonder {path}")
+        else:
+            w.say(f"Gönderildi, teşekkürler! Rapor numaranız: {result.get('id')}")
+    elif choice == "github":
+        w.say(f"Şu adresteki formu açın, dosyayı 'Rapor dosyası' kutusuna sürükleyin:\n"
+              f"{REPORT_FORM_URL}")
+    else:
+        w.say(f"Rapor bilgisayarınızda kaldı. Daha sonra göndermek için:\n"
+              f"  tartim rapor-gonder {path}\n"
+              f"ya da dosyayı GitHub formuyla gönderin: {REPORT_FORM_URL}")
     return path
+
+
+def send_saved(path: str, note: str = "", w: Wizard | None = None) -> int:
+    """Daha önce kaydedilmiş bir rapor dosyasını sunucuya gönderir."""
+    w = w or Wizard()
+    try:
+        report = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"Rapor dosyası okunamadı: {exc}") from exc
+    if not w.yes("Bu ölçüm gerçek bir danışana değil, size ya da bir test kişisine mi ait?",
+                 default=False):
+        w.say("Gerçek danışan ölçümleri gönderilmez.")
+        return 1
+    try:
+        result = send_report(report, note=note)
+    except RuntimeError as exc:
+        raise SystemExit(f"Gönderilemedi: {exc}") from exc
+    w.say(f"Gönderildi, teşekkürler! Rapor numaranız: {result.get('id')}")
+    return 0
 
 
 def main_from_args(args) -> int:
     try:
         run_wizard(Wizard(), port=args.port, baud=args.baud, timeout=args.sure,
                    output=args.cikti, files=args.dosya, detailed=args.ayrintili,
-                   bluetooth=args.bluetooth)
+                   bluetooth=args.bluetooth, send=None if args.gonderme else send_report)
     except KeyboardInterrupt:
         print("\nİptal edildi, rapor oluşturulmadı.", file=sys.stderr)
         return 130

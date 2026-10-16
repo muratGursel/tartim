@@ -6,6 +6,9 @@ from pathlib import Path
 
 try:
     import yaml
+
+    if not hasattr(yaml, "safe_load"):  # aynı adlı başka bir modül
+        yaml = None
 except ImportError:
     yaml = None
 

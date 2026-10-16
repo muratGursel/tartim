@@ -173,6 +173,12 @@ def cmd_report(args) -> int:
     return main_from_args(args)
 
 
+def cmd_send_report(args) -> int:
+    from .report import send_saved  # noqa: PLC0415
+
+    return send_saved(args.dosya, note=args.not_)
+
+
 def cmd_simulate(args) -> int:
     from .simulator import synthetic_record  # noqa: PLC0415
 
@@ -241,9 +247,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--cikti", help="Rapor dosyası (varsayılan: tartim-rapor-MODEL-TARIH.json)")
     s.add_argument("--dosya", nargs="+", help="Seri port yerine SD kart dosyalarını kullan")
     s.add_argument("--bluetooth", action="store_true", help="Tartıyı Bluetooth ile bul")
+    s.add_argument("--gonderme", action="store_true",
+                   help="Raporu yalnızca kaydet, sunucuya göndermeyi sorma")
     s.add_argument("--ayrintili", action="store_true",
                    help="Daha fazla soru sor (cihaz ayarları, ekrandaki tüm değerler)")
     s.set_defaults(func=cmd_report)
+
+    s = sub.add_parser("rapor-gonder", help="Kaydedilmiş bir raporu proje sunucusuna gönder")
+    s.add_argument("dosya")
+    s.add_argument("--not", dest="not_", default="", help="Kısa not (isteğe bağlı)")
+    s.set_defaults(func=cmd_send_report)
 
     s = sub.add_parser("simule", help="Sanal tartı: porta sentetik ölçüm gönder")
     _port_args(s)

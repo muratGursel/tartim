@@ -116,13 +116,13 @@ def main():
         dialog._show_weight_page(entry, target, 212, "bayt veri")
         dialog.weight_entry.set_text("72,4")
 
-    def step_8():  # 9. Rapor: hazır
+    def step_8():  # 9. Rapor: hazır, gönderim seçenekleri
         dialog = report_dialog("done")
         dialog.saved = Path("/home/kullanici/Belgeler/tartim-rapor-MC780MA-20261016-104512.json")
-        dialog.done_info.set_text(
-            f"Rapor şu dosyaya kaydedildi:\n{dialog.saved}\n\n"
-            "“Gönderme formunu aç” düğmesine basın, formda cihaz modelini yazıp bu dosyayı "
-            "sürükleyip bırakın. Teşekkürler!")
+        dialog.done_info.set_text(f"Rapor şu dosyaya kaydedildi:\n{dialog.saved}")
+        dialog.consent.set_active(True)
+        dialog.note_entry.set_text("Cihaz ekranında yağ oranı 24,1 görünüyordu")
+        dialog._update_send_ui()
 
     steps = [step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8]
 

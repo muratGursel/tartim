@@ -58,7 +58,7 @@ code { font-family: "DejaVu Sans Mono", Consolas, monospace; font-size: 9pt; bac
 pre { background: #eef2f7; padding: 3mm 4mm; border-radius: 2mm; white-space: pre-wrap;
       word-break: break-all; page-break-inside: avoid; }
 pre code { background: none; padding: 0; }
-img { display: block; max-width: 100%; max-height: 120mm; margin: 3mm 0 4mm;
+img { display: block; max-width: 100%; max-height: 95mm; margin: 3mm 0 4mm;
       border: 1px solid #c9d3df; border-radius: 2mm; page-break-inside: avoid; }
 table { border-collapse: collapse; width: 100%; margin: 3mm 0; font-size: 9.5pt;
         page-break-inside: avoid; }

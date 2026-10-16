@@ -20,15 +20,25 @@ except (ImportError, ValueError):
 
 from .test_protocol import SAMPLE
 
+_APP = None
+
+
+def shared_app():
+    """Tüm testler için tek GTK uygulaması (aynı oturumda ikincisi kaydedilemez)."""
+    global _APP
+    if _APP is None:
+        from gi.repository import Gio
+
+        _APP = Gtk.Application(flags=Gio.ApplicationFlags.NON_UNIQUE)
+        _APP.register(None)
+    return _APP
+
 
 @unittest.skipUnless(HAVE_DISPLAY, "GTK 3 ve bir ekran gerekli")
 class MainWindowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gi.repository import Gio
-
-        cls.app = Gtk.Application(flags=Gio.ApplicationFlags.NON_UNIQUE)
-        cls.app.register(None)
+        cls.app = shared_app()
 
     def setUp(self):
         from tartim.gui import MainWindow
@@ -66,6 +76,45 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(len(self.window.history_model), 1)
         out = Path(self.tmp.name) / "o.csv"
         self.assertEqual(self.store.export_csv(out), 1)
+
+
+@unittest.skipUnless(HAVE_DISPLAY, "GTK 3 ve bir ekran gerekli")
+class ReportDoneTests(unittest.TestCase):
+    def setUp(self):
+        from tartim.gui import MainWindow, ReportDialog
+        from tartim.storage import Store
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = Store(Path(self.tmp.name) / "t.db")
+        self.app = shared_app()
+        self.window = MainWindow(self.app, self.store)
+        self.dialog = ReportDialog(self.window, "/dev/ttyUSB0", 9600)
+
+    def tearDown(self):
+        self.dialog.destroy()
+        self.window.destroy()
+        self.store.close()
+        self.tmp.cleanup()
+
+    def test_send_choices(self):
+        d = self.dialog
+        self.assertEqual(list(d.send_choices), ["server", "github", "later"])
+        self.assertEqual(d.action.get_label(), "Gönder")
+        self.assertFalse(d.action.get_sensitive())  # onay olmadan gönderilemez
+        d.consent.set_active(True)
+        self.assertTrue(d.action.get_sensitive())
+        d.send_choices["github"].set_active(True)
+        self.assertEqual(d.action.get_label(), "GitHub formunu aç")
+        d.send_choices["later"].set_active(True)
+        self.assertEqual(d.action.get_label(), "Tamam")
+
+    def test_successful_send_locks_choices(self):
+        d = self.dialog
+        d._sent("20261016-abc", None)
+        self.assertIn("20261016-abc", d.send_status.get_label())
+        self.assertFalse(d.send_choices["server"].get_sensitive())
+        d._sent(None, "Sunucuya ulaşılamadı")
+        self.assertIn("Gönderilemedi", d.send_status.get_label())
 
 
 if __name__ == "__main__":

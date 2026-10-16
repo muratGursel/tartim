@@ -1,0 +1,38 @@
+[Unit]
+Description=Tartım cihaz raporu sunucusu
+Documentation=https://github.com/muratGursel/tartim/blob/main/server/KURULUM.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/tartim-rapor/tartim_rapor_sunucusu.py --adres 127.0.0.1 --port 8095
+Environment=TARTIM_GITHUB_REPO=muratGursel/tartim-raporlar
+# Anahtar yalnızca root'un okuyabildiği bu dosyada durur; servise systemd verir.
+LoadCredential=github-token:/etc/tartim-rapor/github-token
+StateDirectory=tartim-rapor
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=5
+
+# Yalıtım: servis geçici bir kullanıcıyla, salt okunur bir sistemde çalışır.
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+MemoryMax=96M
+TasksMax=64
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

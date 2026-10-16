@@ -117,5 +117,56 @@ class WizardTests(unittest.TestCase):
         self.assertIn("9 değerden 9 tanesi", said)
 
 
+class SendChoiceTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.sd = Path(self.tmp.name) / "20261016.CSV"
+        self.sd.write_bytes((SAMPLE + "\r\n").encode())
+        self.sent = []
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, answers, env=None):
+        import os
+        ask, _ = scripted(answers)
+        said = []
+        old = os.environ.get("TARTIM_RAPOR_ADRESI")
+        if env is not None:
+            os.environ["TARTIM_RAPOR_ADRESI"] = env
+        try:
+            run_wizard(Wizard(ask=ask, say=said.append), files=[str(self.sd)],
+                       output=str(Path(self.tmp.name) / "r.json"),
+                       send=lambda report, note: self.sent.append(note) or {"ok": True, "id": "R1"})
+        finally:
+            if env is not None:
+                if old is None:
+                    del os.environ["TARTIM_RAPOR_ADRESI"]
+                else:
+                    os.environ["TARTIM_RAPOR_ADRESI"] = old
+        return "\n".join(said)
+
+    def test_server_with_consent(self):
+        said = self._run(["MC-780", "", "1", "e", "deneme notu"])
+        self.assertEqual(self.sent, ["deneme notu"])
+        self.assertIn("Rapor numaranız: R1", said)
+
+    def test_server_without_consent_is_not_sent(self):
+        said = self._run(["MC-780", "", "1", "h"])
+        self.assertEqual(self.sent, [])
+        self.assertIn("gönderilmez", said)
+
+    def test_github_and_later(self):
+        self.assertIn("issues/new", self._run(["MC-780", "", "2"]))
+        self.assertIn("rapor-gonder", self._run(["MC-780", "", "3"]))
+        self.assertEqual(self.sent, [])
+
+    def test_server_option_can_be_disabled(self):
+        said = self._run(["MC-780", "", "1"], env="")
+        self.assertNotIn("Proje sunucusuna", said)
+        self.assertIn("issues/new", said)  # 1. seçenek artık GitHub formu
+        self.assertEqual(self.sent, [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -21,8 +21,9 @@ from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 from . import __version__, serial_io  # noqa: E402
 from .fields import describe  # noqa: E402
 from .protocol import Framer, Measurement, parse  # noqa: E402
-from .report import (REPORT_FORM_URL, SCREEN_FIELDS, build_entry, capture,  # noqa: E402
-                     compare, new_report, port_details, save_report)
+from .report import (REPORT_FORM_URL, SCREEN_FIELDS, SEND_OPTIONS, build_entry,  # noqa: E402
+                     capture, compare, new_report, port_details, report_server, save_report,
+                     send_report)
 from .storage import Store  # noqa: E402
 
 APP_ID = "io.github.muratgursel.Tartim"
@@ -612,19 +613,98 @@ class ReportDialog(Gtk.Dialog):
     def _page_done(self) -> Gtk.Widget:
         box = self._page("Rapor hazır", "")
         self.done_info = box.get_children()[1]
+
+        question = Gtk.Label(xalign=0)
+        question.set_markup("<b>Raporu nasıl göndermek istersiniz?</b>")
+        box.pack_start(question, False, False, 0)
+        # Sunucu seçeneğinin onay kutusu ve notu, o seçeneğin hemen altında durur.
+        self.server_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6,
+                                  margin_start=24, margin_bottom=4)
+        self.consent = Gtk.CheckButton(label="Bu ölçüm gerçek bir danışana ait değildir")
+        self.consent.set_tooltip_text("Ölçümü kendiniz ya da bir test kişisi üzerinde yaptıysanız "
+                                      "işaretleyin")
+        self.consent.connect("toggled", lambda *_: self._update_send_ui())
+        self.note_entry = Gtk.Entry(placeholder_text="Kısa not (isteğe bağlı)")
+        self.server_box.pack_start(self.consent, False, False, 0)
+        self.server_box.pack_start(self.note_entry, False, False, 0)
+
+        self.send_choices: dict[str, Gtk.RadioButton] = {}
+        group = None
+        for label, key in SEND_OPTIONS:
+            if key == "server" and not report_server():
+                continue  # kurum sunucuya gönderimi kapatmış
+            radio = Gtk.RadioButton.new_with_label_from_widget(group, label)
+            group = group or radio
+            radio.connect("toggled", lambda *_: self._update_send_ui())
+            self.send_choices[key] = radio
+            box.pack_start(radio, False, False, 0)
+            if key == "server":
+                box.pack_start(self.server_box, False, False, 0)
+        self.send_status = Gtk.Label(xalign=0, wrap=True, max_width_chars=60)
+        box.pack_start(self.send_status, False, False, 0)
+
         buttons = Gtk.Box(spacing=8)
-        form = Gtk.Button(label="Gönderme formunu aç")
-        form.get_style_context().add_class("suggested-action")
-        form.connect("clicked", lambda *_: self._open_uri(REPORT_FORM_URL))
+        self.action = Gtk.Button()
+        self.action.get_style_context().add_class("suggested-action")
+        self.action.connect("clicked", self.on_send_action)
         folder = Gtk.Button(label="Klasörü aç")
         folder.connect("clicked", lambda *_: self._open_uri(self.saved.parent.as_uri()))
         close = Gtk.Button(label="Kapat")
         close.connect("clicked", lambda *_: self.response(Gtk.ResponseType.CLOSE))
-        buttons.pack_end(form, False, False, 0)
+        buttons.pack_end(self.action, False, False, 0)
         buttons.pack_end(folder, False, False, 0)
         buttons.pack_start(close, False, False, 0)
         box.pack_end(buttons, False, False, 0)
+        self._update_send_ui()
         return box
+
+    def _send_choice(self) -> str:
+        return next(key for key, radio in self.send_choices.items() if radio.get_active())
+
+    def _update_send_ui(self) -> None:
+        choice = self._send_choice()
+        self.server_box.set_visible(choice == "server")
+        self.server_box.set_no_show_all(choice != "server")
+        self.action.set_label({"server": "Gönder", "github": "GitHub formunu aç",
+                               "later": "Tamam"}[choice])
+        self.action.set_sensitive(choice != "server" or self.consent.get_active())
+
+    def on_send_action(self, *_):
+        choice = self._send_choice()
+        if choice == "github":
+            self._open_uri(REPORT_FORM_URL)
+            self.send_status.set_text("Formda cihaz modelini yazıp rapor dosyasını “Rapor "
+                                      "dosyası” kutusuna sürükleyin.")
+        elif choice == "later":
+            self.response(Gtk.ResponseType.CLOSE)
+        else:
+            self.action.set_sensitive(False)
+            self.send_status.set_text("Gönderiliyor...")
+            note = self.note_entry.get_text().strip()
+            threading.Thread(target=self._send_to_server, args=(note,), daemon=True).start()
+
+    def _send_to_server(self, note: str) -> None:
+        try:
+            result = send_report(self.report, note=note)
+        except RuntimeError as exc:
+            GLib.idle_add(self._sent, None, str(exc))
+        else:
+            GLib.idle_add(self._sent, result.get("id"), None)
+
+    def _sent(self, report_id, error) -> bool:
+        if error:
+            self.send_status.set_markup(f"<b>Gönderilemedi:</b> {escape(error)}")
+            self._update_send_ui()
+        else:
+            self.send_status.set_markup(
+                f"<b>Gönderildi, teşekkürler!</b> Rapor numaranız: {escape(str(report_id))}")
+            for radio in self.send_choices.values():
+                radio.set_sensitive(False)
+            self.server_box.set_sensitive(False)
+            self.action.set_label("Tamam")
+            self.action.set_sensitive(True)
+            self.send_choices["later"].set_active(True)
+        return False
 
     # --- Akış --------------------------------------------------------------
 
@@ -782,11 +862,9 @@ class ReportDialog(Gtk.Dialog):
         except OSError as exc:
             self.parent_window.show_message(Gtk.MessageType.ERROR, "Rapor kaydedilemedi", str(exc))
             return
-        self.done_info.set_text(
-            f"Rapor şu dosyaya kaydedildi:\n{self.saved}\n\n"
-            "“Gönderme formunu aç” düğmesine basın, formda cihaz modelini yazıp bu dosyayı "
-            "sürükleyip bırakın. Teşekkürler!")
+        self.done_info.set_text(f"Rapor şu dosyaya kaydedildi:\n{self.saved}")
         self.stack.set_visible_child_name("done")
+        self._update_send_ui()
 
     def _open_uri(self, uri: str) -> None:
         try:

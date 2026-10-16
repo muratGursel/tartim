@@ -204,20 +204,42 @@ Rapor yaklaşık 2 dakika sürer.
    ![Ekrandaki kiloyu yazın](ekran/08-rapor-kilo.png)
 
 7. **Raporu kaydet**'e basın. Rapor **Belgeler** klasörünüze
-   `tartim-rapor-MODEL-TARİH.json` adıyla kaydedilir.
-
-   ![Rapor hazır](ekran/09-rapor-hazir.png)
+   `tartim-rapor-MODEL-TARİH.json` adıyla kaydedilir ve gönderim seçenekleri
+   görünür (bkz. 7.2).
 
 "Hiç veri gelmedi" yazsa bile raporu kaydedip gönderin; bu da işimize yarar.
 
 ### 7.2 Raporu göndermek
 
-Raporlar GitHub üzerinden toplanır. Göndermek için ücretsiz bir GitHub hesabı
-gerekir (hesabınız yoksa <https://github.com/signup> adresinden birkaç dakikada
-açabilirsiniz).
+Rapor kaydedildikten sonra pencerede raporu nasıl göndermek istediğiniz sorulur.
+Size uygun olanı seçin:
 
-1. Rapor kaydedildikten sonra açılan pencerede **Gönderme formunu aç**'a basın.
-   (Pencereyi kapattıysanız şu adrese gidin:
+![Gönderim seçenekleri](ekran/09-rapor-hazir.png)
+
+| Seçenek | Ne olur? | Kimin için? |
+|---|---|---|
+| **Proje sunucusuna gönder** | Rapor tek tıkla geliştiricilere ulaşır. GitHub hesabı gerekmez. Rapor herkese açık yayımlanmaz. | Çoğu kullanıcı için en kolayı |
+| **GitHub formuyla kendim göndereceğim** | GitHub'daki form açılır, dosyayı siz eklersiniz. Kayıt herkese açık görünür. | GitHub hesabı olan ve süreci kendisi takip etmek isteyenler |
+| **Şimdilik gönderme** | Dosya bilgisayarınızda kalır. İstediğiniz zaman ya da istediğiniz yoldan (ör. e-posta) iletebilirsiniz. | Önce kurum içinde kontrol etmek isteyenler |
+
+#### Proje sunucusuna göndermek
+
+1. **Proje sunucusuna gönder** seçili olsun.
+2. **"Bu ölçüm gerçek bir danışana ait değildir"** kutusunu işaretleyin. İşaretlemeden
+   **Gönder** düğmesi çalışmaz.
+3. İsterseniz kısa bir not yazın (ör. "Cihaz ekranında yağ oranı 24,1 görünüyordu").
+4. **Gönder**'e basın. "Gönderildi, teşekkürler!" yazısı ve bir **rapor numarası**
+   görünür. Bize ulaşırken bu numarayı belirtebilirsiniz.
+
+İnternet bağlantısı yoksa "Rapor sunucusuna ulaşılamadı" yazar. Dosya
+bilgisayarınızda durur; daha sonra yeniden gönderebilirsiniz (bkz. 7.3).
+
+#### GitHub formuyla göndermek
+
+Ücretsiz bir GitHub hesabı gerekir (<https://github.com/signup>).
+
+1. **GitHub formuyla kendim göndereceğim**'i seçip **GitHub formunu aç**'a basın.
+   (Doğrudan adres:
    <https://github.com/muratGursel/tartim/issues/new?template=cihaz-raporu.yml>)
 2. GitHub hesabınızla giriş yapın. "Cihaz raporu" formu açılır:
 
@@ -234,11 +256,9 @@ açabilirsiniz).
    - **Notlar:** varsa yaşadığınız sorunları yazın (isteğe bağlı).
    - **Onay:** sayfanın altındaki "Bu ölçüm gerçek bir danışana ait değildir"
      kutusunu işaretleyin.
-4. Sağ alttaki yeşil **Create** düğmesine basın. Raporunuz gönderildi;
-   incelediğimizde aynı sayfadan size yanıt yazarız.
+4. Sağ alttaki yeşil **Create** düğmesine basın.
 
-Gönderdiğiniz rapor herkese açık olarak görünür. Bu yüzden yalnızca test
-ölçümü gönderin.
+Bu yolla gönderilen raporlar herkese açık görünür.
 
 ### 7.3 Komut satırından rapor (isteğe bağlı)
 
@@ -250,7 +270,13 @@ tartim rapor --bluetooth   # Bluetooth cihaz
 tartim rapor --dosya /media/KULLANICI/SD/20261016.CSV   # SD kart
 ```
 
-Program yalnızca modeli ve ekrandaki kiloyu sorar; raporu bulunduğunuz klasöre kaydeder.
+Program yalnızca modeli ve ekrandaki kiloyu sorar, raporu bulunduğunuz klasöre
+kaydeder ve nasıl göndermek istediğinizi sorar. Kaydedilmiş bir raporu daha sonra
+sunucuya göndermek için:
+
+```
+tartim rapor-gonder tartim-rapor-MC780MA-20261016-104512.json
+```
 
 ---
 
@@ -279,9 +305,14 @@ sayılır.
 
 - Ölçümler yalnızca sizin bilgisayarınızda, yalnızca sizin kullanıcı hesabınızın
   okuyabileceği bir dosyada saklanır (`~/.local/share/tartim/tartim.db`).
-  Uygulama hiçbir veriyi internete göndermez.
+  Ölçümler hiçbir zaman internete gönderilmez.
+- İnternete giden tek şey, sizin seçip onayladığınız **cihaz raporlarıdır**.
+  Proje sunucusuna gönderilen raporlar yalnızca geliştiricilerin erişebildiği
+  özel bir depoda tutulur; GitHub formuyla gönderilenler herkese açıktır.
+  Her iki durumda da gerçek danışan ölçümü göndermeyin.
+- Kurumunuz sunucuya gönderimi tamamen kapatmak isterse bilgi işlem birimi
+  `TARTIM_RAPOR_ADRESI` ortam değişkenini boş bırakabilir; bu durumda seçenek
+  pencerede görünmez.
 - Excel'e aktardığınız dosyalar da kişisel veri içerir; güvenli bir yerde saklayın.
-- Cihaz raporları herkese açık olarak gönderilir. Gerçek danışan ölçümü
-  göndermeyin.
 - Kurumunuzda kullanmadan önce açık rıza, erişim yetkisi ve saklama süresi
   konularını veri sorumlunuzla netleştirin.
