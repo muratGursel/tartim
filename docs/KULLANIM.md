@@ -1,5 +1,7 @@
 # Tartım Kullanım Kılavuzu
 
+📄 **[Bu kılavuzu PDF olarak indirin](Tartim-Kullanim-Kilavuzu.pdf)** (yazdırmak için)
+
 > Kılavuzdaki ekran görüntülerinde örnek (sentetik) ölçümler ve örnek
 > Bluetooth cihazları kullanılmıştır; hiçbiri gerçek bir kişiye ait değildir.
 

@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -47,7 +48,12 @@ class SerialEndToEndTests(unittest.TestCase):
     def test_listen_receives_simulated_measurements(self):
         listener = self._tartim("dinle", "--port", str(self.pc), "--adet", "3",
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        time.sleep(1)
+        # Port açılmadan gönderilen veri kaybolur (pyserial açılışta giriş
+        # tamponunu boşaltır); dinleyicinin hazır olduğunu söylemesini bekle.
+        ready = threading.Event()
+        threading.Thread(target=lambda: ready.set() if "dinleniyor" in
+                         listener.stderr.readline() else None, daemon=True).start()
+        self.assertTrue(ready.wait(30), "dinleyici başlamadı")
         sim = self._tartim("simule", "--port", str(self.scale), "--adet", "3",
                            "--aralik", "0.2", "--tohum", "7", stderr=subprocess.DEVNULL)
         self.assertEqual(sim.wait(timeout=20), 0)

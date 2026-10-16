@@ -27,7 +27,7 @@ install -m 644 "$ROOT/packaging/debian/io.github.muratgursel.Tartim.svg" \
     "$PKG/usr/share/icons/hicolor/scalable/apps/"
 install -m 644 "$ROOT/packaging/debian/70-tartim.rules" "$PKG/usr/lib/udev/rules.d/"
 install -m 644 "$ROOT/README.md" "$ROOT/docs/PROTOKOL.md" "$ROOT/docs/KULLANIM.md" \
-    "$PKG/usr/share/doc/tartim/"
+    "$ROOT/docs/Tartim-Kullanim-Kilavuzu.pdf" "$PKG/usr/share/doc/tartim/"
 install -m 644 "$ROOT/packaging/debian/copyright" "$PKG/usr/share/doc/tartim/copyright"
 install -m 755 "$ROOT/packaging/debian/postinst" "$ROOT/packaging/debian/prerm" "$PKG/DEBIAN/"
 
