@@ -72,13 +72,65 @@ class Listener(threading.Thread):
             port.close()
 
 
+class BleListener(threading.Thread):
+    """Standart Bluetooth LE tartıyı dinler (Weight Scale / Body Composition)."""
+
+    def __init__(self, device, on_record, on_error, on_connected):
+        super().__init__(daemon=True)
+        self.device = device
+        self.settings = serial_io.PortSettings(device.port)
+        self._on_record = on_record
+        self._on_error = on_error
+        self._on_connected = on_connected
+        self._stopping = threading.Event()
+
+    def stop(self) -> None:
+        self._stopping.set()
+
+    def run(self) -> None:
+        from . import bluetooth  # noqa: PLC0415
+
+        model = self.device.name or "Bluetooth tartı"
+        try:
+            with bluetooth.BlueZ() as bz:
+                bluetooth.listen_standard(
+                    bz, self.device,
+                    lambda values: GLib.idle_add(
+                        self._on_record, bluetooth.record_from_values(model, values)),
+                    stopping=self._stopping.is_set,
+                    on_connected=lambda: GLib.idle_add(self._on_connected))
+        except BaseException as exc:  # noqa: BLE001
+            if not self._stopping.is_set():
+                GLib.idle_add(self._on_error, _error_text(exc))
+
+
+def scan_bluetooth_async(seconds: float, on_done, on_error) -> None:
+    """Bluetooth taramasını arka planda yapar; sonucu ana iş parçacığına verir."""
+    def work():
+        from . import bluetooth  # noqa: PLC0415
+
+        try:
+            with bluetooth.BlueZ() as bz:
+                devices = bluetooth.scan(bz, seconds)
+        except BaseException as exc:  # noqa: BLE001
+            GLib.idle_add(on_error, _error_text(exc))
+        else:
+            GLib.idle_add(on_done, devices)
+    threading.Thread(target=work, daemon=True).start()
+
+
+def _bt_label(device) -> str:
+    return f"{device.port}  ({device.name or 'adsız'}, {device.kind})"
+
+
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, app: Gtk.Application, store: Store, port: str | None = None):
         super().__init__(application=app, title="Tartım")
         self.set_default_size(980, 620)
         self.set_icon_name(APP_ID)
         self.store = store
-        self.listener: Listener | None = None
+        self.listener: Listener | BleListener | None = None
+        self.bt_devices: dict = {}
         self.connect("destroy", lambda *_: self.stop_listening())
 
         header = Gtk.HeaderBar(show_close_button=True, title="Tartım",
@@ -116,6 +168,12 @@ class MainWindow(Gtk.ApplicationWindow):
         refresh.set_tooltip_text("Portları yeniden tara")
         refresh.connect("clicked", lambda *_: self.refresh_ports())
         bar.pack_start(refresh, False, False, 0)
+
+        self.bt_button = Gtk.Button.new_from_icon_name("bluetooth-active-symbolic",
+                                                       Gtk.IconSize.BUTTON)
+        self.bt_button.set_tooltip_text("Bluetooth tartıları ara")
+        self.bt_button.connect("clicked", self.on_bt_scan)
+        bar.pack_start(self.bt_button, False, False, 0)
 
         bar.pack_start(Gtk.Label(label="Hız:"), False, False, 0)
         self.baud_combo = Gtk.ComboBoxText()
@@ -196,7 +254,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.status.set_text(text)
 
     def selected_port(self) -> str:
-        return self.port_combo.get_child().get_text().strip()
+        text = self.port_combo.get_child().get_text().strip()
+        return text.split()[0] if text else ""
 
     def selected_baud(self) -> int:
         return int(self.baud_combo.get_active_text() or 9600)
@@ -210,7 +269,7 @@ class MainWindow(Gtk.ApplicationWindow):
             self.set_status(str(exc))
             ports = []
         # USB-seri çeviriciler önce gelsin; tartılar çoğunlukla bunlarla bağlanır.
-        ports.sort(key=lambda p: not ("ttyUSB" in p[0] or "ttyACM" in p[0]))
+        ports.sort(key=lambda p: (not ("ttyUSB" in p[0] or "ttyACM" in p[0]), p[0]))
         for device, desc in ports:
             label = device if not desc or desc == "n/a" else f"{device}"
             self.port_combo.append(device, label)
@@ -267,8 +326,17 @@ class MainWindow(Gtk.ApplicationWindow):
                               "Tartının bağlı olduğu portu seçin. Liste boşsa kabloyu takıp "
                               "yenile düğmesine basın.")
             return False
-        self.listener = Listener(serial_io.PortSettings(port, self.selected_baud()),
-                                 self.on_record, self.on_listen_error)
+        device = self.bt_device_for(port)
+        if device is not None and not device.classic_serial:
+            name = device.name or port
+            self.listener = BleListener(
+                device, self.on_record, self.on_listen_error,
+                lambda: self.set_status(f"{name} bağlandı. Cihazda ölçüm yapın."))
+            status = f"{name} cihazına Bluetooth ile bağlanılıyor..."
+        else:
+            self.listener = Listener(serial_io.PortSettings(port, self.selected_baud()),
+                                     self.on_record, self.on_listen_error)
+            status = f"{port} dinleniyor. Cihazda ölçüm yapın."
         self.listener.start()
         self.connect_button.set_label("Bağlantıyı kes")
         ctx = self.connect_button.get_style_context()
@@ -276,8 +344,41 @@ class MainWindow(Gtk.ApplicationWindow):
         ctx.add_class("destructive-action")
         self.port_combo.set_sensitive(False)
         self.baud_combo.set_sensitive(False)
-        self.set_status(f"{port} dinleniyor. Cihazda ölçüm yapın.")
+        self.bt_button.set_sensitive(False)
+        self.set_status(status)
         return True
+
+    def bt_device_for(self, port: str):
+        if not port.lower().startswith("bt:"):
+            return None
+        from .bluetooth import parse_bt_port  # noqa: PLC0415
+
+        return self.bt_devices.get(parse_bt_port(port)[0])
+
+    def on_bt_scan(self, *_):
+        self.bt_button.set_sensitive(False)
+        self.set_status("Bluetooth cihazları aranıyor (10 sn)... Tartının açık olduğundan emin olun.")
+        scan_bluetooth_async(10, self._bt_scanned, self._bt_failed)
+
+    def _bt_scanned(self, devices) -> bool:
+        self.bt_button.set_sensitive(self.listener is None)
+        for device in devices:
+            if device.address not in self.bt_devices:
+                self.port_combo.append(device.port, _bt_label(device))
+            self.bt_devices[device.address] = device
+        if devices:
+            self.port_combo.get_child().set_text(_bt_label(devices[0]))
+            self.set_status(f"{len(devices)} Bluetooth cihazı bulundu. Listeden tartınızı seçip "
+                            "“Bağlan”a basın.")
+        else:
+            self.set_status("Bluetooth cihazı bulunamadı. Tartıyı açıp tekrar deneyin.")
+        return False
+
+    def _bt_failed(self, message: str) -> bool:
+        self.bt_button.set_sensitive(self.listener is None)
+        self.set_status("Bluetooth taraması yapılamadı.")
+        self.show_message(Gtk.MessageType.ERROR, "Bluetooth", message)
+        return False
 
     def stop_listening(self) -> None:
         if self.listener:
@@ -290,6 +391,7 @@ class MainWindow(Gtk.ApplicationWindow):
         ctx.add_class("suggested-action")
         self.port_combo.set_sensitive(True)
         self.baud_combo.set_sensitive(True)
+        self.bt_button.set_sensitive(True)
 
     def on_connect_clicked(self, *_):
         if self.listener:
@@ -370,7 +472,8 @@ class MainWindow(Gtk.ApplicationWindow):
         if was_listening:
             self.stop_listening()
             self.set_status("Cihaz raporu hazırlanıyor; dinleme rapor bitince sürecek.")
-        dialog = ReportDialog(self, self.selected_port(), self.selected_baud())
+        dialog = ReportDialog(self, self.selected_port(), self.selected_baud(),
+                              self.bt_device_for(self.selected_port()))
         dialog.run()
         dialog.close_dialog()
         if was_listening:
@@ -382,11 +485,13 @@ class MainWindow(Gtk.ApplicationWindow):
 class ReportDialog(Gtk.Dialog):
     """Üç adımlı cihaz raporu: model → ölçüm → ekrandaki kilo."""
 
-    def __init__(self, parent: MainWindow, port: str, baud: int):
+    def __init__(self, parent: MainWindow, port: str, baud: int, bt_device=None):
         super().__init__(title="Cihaz raporu", transient_for=parent, modal=True)
         self.set_default_size(520, 360)
         self.parent_window = parent
         self.port, self.baud = port, baud
+        self.bt_device = bt_device
+        self.bt_devices: list = []
         self.entry: dict | None = None
         self.target: dict | None = None
         self.cancel = threading.Event()
@@ -396,6 +501,7 @@ class ReportDialog(Gtk.Dialog):
                                margin=18, vexpand=True)
         self.get_content_area().add(self.stack)
         self.stack.add_named(self._page_start(), "start")
+        self.stack.add_named(self._page_bluetooth(), "bluetooth")
         self.stack.add_named(self._page_wait(), "wait")
         self.stack.add_named(self._page_weight(), "weight")
         self.stack.add_named(self._page_done(), "done")
@@ -427,12 +533,42 @@ class ReportDialog(Gtk.Dialog):
         self.start_button.connect("clicked", self.on_start)
         sd = Gtk.Button(label="SD kart dosyasından…")
         sd.connect("clicked", self.on_sd_file)
+        self.bt_start = Gtk.Button(label="Bluetooth ile…", sensitive=False)
+        self.bt_start.connect("clicked", self.on_bluetooth)
+        self.model_entry.connect("changed", lambda e: self.bt_start.set_sensitive(
+            bool(e.get_text().strip())))
         buttons.pack_end(self.start_button, False, False, 0)
+        buttons.pack_end(self.bt_start, False, False, 0)
         buttons.pack_end(sd, False, False, 0)
         box.pack_end(buttons, False, False, 0)
         port_text = self.port or "seçilmedi"
         box.pack_end(Gtk.Label(label=f"Port: {port_text} · Hız: {self.baud}", xalign=0), False,
                      False, 0)
+        return box
+
+    def _page_bluetooth(self) -> Gtk.Widget:
+        box = self._page("Bluetooth cihazını seçin",
+                         "Tartıyı açın. Yakındaki cihazlar aranıyor; listeden tartınızı seçin.")
+        self.bt_spinner = Gtk.Spinner()
+        box.pack_start(self.bt_spinner, False, False, 0)
+        self.bt_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
+        self.bt_list.connect("row-selected", lambda _l, row: self.bt_choose.set_sensitive(
+            row is not None and row.get_index() < len(self.bt_devices)))
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        scroll.add(self.bt_list)
+        box.pack_start(scroll, True, True, 0)
+        row = Gtk.Box(spacing=8)
+        back = Gtk.Button(label="Geri")
+        back.connect("clicked", lambda *_: self.stack.set_visible_child_name("start"))
+        again = Gtk.Button(label="Yeniden ara")
+        again.connect("clicked", lambda *_: self._bt_rescan())
+        self.bt_choose = Gtk.Button(label="Seç ve ölçüme başla", sensitive=False)
+        self.bt_choose.get_style_context().add_class("suggested-action")
+        self.bt_choose.connect("clicked", self.on_bt_chosen)
+        row.pack_start(back, False, False, 0)
+        row.pack_end(self.bt_choose, False, False, 0)
+        row.pack_end(again, False, False, 0)
+        box.pack_end(row, False, False, 0)
         return box
 
     def _page_wait(self) -> Gtk.Widget:
@@ -483,16 +619,77 @@ class ReportDialog(Gtk.Dialog):
     def device(self) -> dict:
         return {"brand": "Tanita", "model": self.model_entry.get_text().strip()}
 
+    def on_bluetooth(self, *_):
+        self.stack.set_visible_child_name("bluetooth")
+        self._bt_rescan()
+
+    def _bt_rescan(self) -> None:
+        for child in self.bt_list.get_children():
+            self.bt_list.remove(child)
+        self.bt_devices = []
+        self.bt_spinner.start()
+        self.bt_choose.set_sensitive(False)
+        scan_bluetooth_async(10, self._bt_listed, self._bt_list_failed)
+
+    def _bt_listed(self, devices) -> bool:
+        self.bt_spinner.stop()
+        self.bt_devices = devices
+        for device in devices:
+            label = Gtk.Label(xalign=0, margin=8)
+            rssi = f" · {device.rssi} dBm" if device.rssi is not None else ""
+            label.set_markup(f"<b>{escape(device.name or 'Adsız cihaz')}</b>\n"
+                             f"<small>{escape(device.kind)}{rssi}</small>")
+            self.bt_list.add(label)
+        if not devices:
+            self.bt_list.add(Gtk.Label(
+                label="Cihaz bulunamadı. Tartıyı açıp “Yeniden ara”ya basın.", margin=12))
+        self.bt_list.show_all()
+        return False
+
+    def _bt_list_failed(self, message: str) -> bool:
+        self.bt_spinner.stop()
+        self.stack.set_visible_child_name("start")
+        self.parent_window.show_message(Gtk.MessageType.ERROR, "Bluetooth", message)
+        return False
+
+    def on_bt_chosen(self, *_):
+        row = self.bt_list.get_selected_row()
+        if row is None or row.get_index() >= len(self.bt_devices):
+            return
+        self.bt_device = self.bt_devices[row.get_index()]
+        self.parent_window.bt_devices[self.bt_device.address] = self.bt_device
+        self.port = self.bt_device.port
+        self.on_start()
+
+    def _capture_ble(self) -> None:
+        from . import bluetooth  # noqa: PLC0415
+        from .report import ble_entry  # noqa: PLC0415
+
+        try:
+            with bluetooth.BlueZ() as bz:
+                result = bluetooth.capture_ble(bz, self.bt_device, timeout=180,
+                                               cancelled=self.cancel.is_set)
+        except BaseException as exc:  # noqa: BLE001
+            GLib.idle_add(self._capture_failed, _error_text(exc))
+            return
+        entry, target = ble_entry(self.bt_device, result)
+        GLib.idle_add(self._show_weight_page, entry, target, len(result["notifications"]),
+                      "Bluetooth bildirimi")
+
     def on_start(self, *_):
         if not self.port:
             self.parent_window.show_message(Gtk.MessageType.WARNING, "Port seçilmedi",
                                             "Ana penceredeki listeden tartının portunu seçin.")
             return
-        self.report = new_report({**self.device(), "connection": "seri port"}, "arayuz")
-        self.report["port"] = {**port_details(self.port), "baudrate": self.baud,
-                               "bytesize": 8, "parity": "N", "stopbits": 1}
+        ble = self.bt_device is not None and not self.bt_device.classic_serial
+        connection = f"bluetooth ({self.bt_device.kind})" if self.bt_device else "seri port"
+        self.report = new_report({**self.device(), "connection": connection}, "arayuz")
+        self.report["port"] = port_details(self.port) if self.bt_device else {
+            **port_details(self.port), "baudrate": self.baud, "bytesize": 8, "parity": "N",
+            "stopbits": 1}
         self.stack.set_visible_child_name("wait")
-        self.thread = threading.Thread(target=self._capture, daemon=True)
+        self.thread = threading.Thread(target=self._capture_ble if ble else self._capture,
+                                       daemon=True)
         self.thread.start()
 
     def _capture(self) -> None:
@@ -513,19 +710,25 @@ class ReportDialog(Gtk.Dialog):
         return False
 
     def _captured(self, data: bytes, timing: list, source: str) -> bool:
+        entry, target = build_entry(data, timing, source)
+        return self._show_weight_page(entry, target, len(data), "bayt veri")
+
+    def _show_weight_page(self, entry: dict, target, amount: int, unit: str) -> bool:
         if self.cancel.is_set():
             self.cancel.clear()
             self.stack.set_visible_child_name("start")
             return False
-        self.entry, self.target = build_entry(data, timing, source)
-        if data:
+        self.entry, self.target = entry, target
+        if amount:
             self.weight_info.set_text(
-                f"Cihazdan {len(data)} bayt veri alındı. Cihaz ekranında gördüğünüz kiloyu "
+                f"Cihazdan {amount} {unit} alındı. Cihaz ekranında gördüğünüz kiloyu "
                 "yazarsanız veriyi doğrulamamız kolaylaşır.")
         else:
             self.weight_info.set_text(
-                "Cihazdan hiç veri gelmedi. Yine de raporu gönderebilirsiniz; kabloyu, "
-                "hız ayarını ve cihazın bilgisayara veri gönderme ayarını kontrol edin.")
+                "Cihazdan hiç veri gelmedi. Yine de raporu gönderebilirsiniz; cihazın yapısı "
+                "rapora eklendi. Kablolu cihazlarda kabloyu ve hız ayarını kontrol edin; "
+                "Bluetooth cihazlar veri göndermeden önce üreticinin uygulamasından komut "
+                "bekliyor olabilir.")
         self.stack.set_visible_child_name("weight")
         self.weight_entry.grab_focus()
         return False

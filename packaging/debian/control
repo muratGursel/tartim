@@ -4,13 +4,15 @@ Architecture: all
 Maintainer: Murat GÜRSEL <murat.gursel@knicode.com>
 Installed-Size: @SIZE@
 Depends: python3 (>= 3.11), python3-serial (>= 3.5), python3-gi, gir1.2-gtk-3.0
+Recommends: bluez
 Suggests: socat
 Section: science
 Priority: optional
 Homepage: https://github.com/muratGursel/tartim
 Description: Tanita uyumlu vücut kompozisyon analizörü okuyucusu
- Vücut kompozisyon analizörlerinin seri port (RS-232 / USB) üzerinden
- gönderdiği ölçümleri okur, çözer ve yerel bir veritabanında saklar.
+ Vücut kompozisyon analizörlerinin seri port (RS-232 / USB) ve Bluetooth
+ üzerinden gönderdiği ölçümleri okur, çözer ve yerel bir veritabanında
+ saklar.
  SD kart dosyalarını içe aktarır, ölçümleri CSV olarak dışa aktarır ve
  geliştiricilere gönderilmek üzere cihaz raporu hazırlar. Masaüstü
  arayüzü ve komut satırı aracı içerir.

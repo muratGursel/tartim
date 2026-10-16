@@ -33,6 +33,36 @@ Bluetooth protokolünü çözen topluluk notlarıdır
 (<https://gist.github.com/zapkub/350bb90a0aa70d7c3685522e0b83736c>); bu
 yüzden hepsi `confirmed=False` olarak işaretli.
 
+## Bluetooth
+
+`tartim` BlueZ'e D-Bus üzerinden bağlanır (ek paket gerekmez).
+
+| Cihaz türü | Destek |
+|---|---|
+| Klasik Bluetooth seri port (SPP) | Eşleştirdikten sonra port olarak `bt:AA:BB:CC:DD:EE:FF` yazın; kablolu cihazlarla aynı şekilde okunur. RFCOMM kanalı 1–5 arasında denenir, gerekirse `bt:ADRES@KANAL`. |
+| BLE, standart tartı servisleri (Weight Scale 0x181D, Body Composition 0x181B) | Doğrudan ve canlı okunur. Paket biçimi Bluetooth SIG spesifikasyonundan; ağırlık ve vücut kompozisyonu paketleri birleştirilir. Gerçek bir cihazla henüz doğrulanmadı. |
+| BLE, üreticiye özel servisler (ör. Tartı FAST olabilir) | Henüz okunamaz. `tartim rapor --bluetooth` cihazın servis yapısını, okunabilir bilgi alanlarını (model, yazılım sürümü; seri numarası hariç) ve ölçüm sırasında gelen tüm bildirimleri kaydeder. Cihaza hiçbir şey yazılmaz. |
+
+Raporda Bluetooth adresinin yalnızca ilk üç baytı (üretici kodu) tutulur.
+
+### Cihaz, uygulamadan komut bekliyorsa
+
+Bazı tartılar (ör. Tanita MC-780 Bluetooth modülü) ölçüm göndermeden önce
+uygulamadan boy, yaş, cinsiyet gibi bilgileri ve bir başlat komutu bekler. Bu
+durumda raporda bildirim görünmez. Protokolü çözmek için üreticinin telefon
+uygulamasıyla cihaz arasındaki trafiği kaydetmek gerekir:
+
+1. Android telefonda **Ayarlar → Telefon hakkında → Yapı numarası**'na yedi kez
+   dokunarak geliştirici seçeneklerini açın.
+2. **Geliştirici seçenekleri → Bluetooth HCI izleme günlüğünü etkinleştir**'i açın,
+   Bluetooth'u kapatıp açın.
+3. Üreticinin uygulamasıyla bir test kişisi üzerinde ölçüm yapın.
+4. Günlüğü alın: bilgisayardan `adb bugreport rapor.zip` (dosya içinde
+   `btsnoop_hci.log`). Wireshark ile açılabilir.
+5. Dosyayı cihaz raporuyla birlikte gönderin. Günlükte telefondaki diğer
+   Bluetooth cihazlarının trafiği de bulunabilir; mümkünse yalnızca tartı
+   bağlıyken kaydedin.
+
 ## Yeni bir cihazı nasıl doğrularız?
 
 1. Cihazı bağlayın, portu bulun: `tartim portlar`

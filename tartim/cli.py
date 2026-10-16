@@ -140,6 +140,25 @@ def cmd_export(args) -> int:
     return 0
 
 
+def cmd_bluetooth(args) -> int:
+    from .bluetooth import BluetoothError, BlueZ, scan  # noqa: PLC0415
+
+    print(f"Taranıyor ({args.sure:g} sn)... Tartının açık olduğundan emin olun.", file=sys.stderr)
+    with BlueZ() as bz:
+        try:
+            devices = scan(bz, args.sure)
+        except BluetoothError as exc:
+            raise SystemExit(str(exc)) from exc
+    if not devices:
+        print("Cihaz bulunamadı.")
+    for d in devices:
+        rssi = f"{d.rssi} dBm" if d.rssi is not None else ""
+        print(f"{d.port:<21}  {d.name or '(adsız)':<24}  {d.kind:<22}  {rssi}")
+    if any(d.classic_serial for d in devices):
+        print("\nKlasik (seri port) cihazları doğrudan okuyabilirsiniz: tartim dinle --port bt:ADRES")
+    return 0
+
+
 def cmd_gui(args) -> int:
     from .gui import main as gui_main  # noqa: PLC0415
 
@@ -207,6 +226,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--danisan")
     s.set_defaults(func=cmd_export)
 
+    s = sub.add_parser("bluetooth", help="Yakındaki Bluetooth cihazlarını listele")
+    s.add_argument("--sure", type=float, default=10, help="Tarama süresi, saniye")
+    s.set_defaults(func=cmd_bluetooth)
+
     s = sub.add_parser("arayuz", help="Masaüstü arayüzünü aç")
     s.add_argument("--port", help="Açılışta seçili olacak port")
     s.set_defaults(func=cmd_gui)
@@ -217,6 +240,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--sure", type=float, default=180, help="Ölçüm için bekleme süresi, saniye")
     s.add_argument("--cikti", help="Rapor dosyası (varsayılan: tartim-rapor-MODEL-TARIH.json)")
     s.add_argument("--dosya", nargs="+", help="Seri port yerine SD kart dosyalarını kullan")
+    s.add_argument("--bluetooth", action="store_true", help="Tartıyı Bluetooth ile bul")
     s.add_argument("--ayrintili", action="store_true",
                    help="Daha fazla soru sor (cihaz ayarları, ekrandaki tüm değerler)")
     s.set_defaults(func=cmd_report)

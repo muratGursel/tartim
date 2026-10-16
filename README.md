@@ -50,6 +50,19 @@ Kurulumdan sonra uygulama menüsünde **Tartım** adıyla görünür; uçbirimde
 4. **Cihaz raporu** düğmesi, geliştiricilere gönderilecek raporu üç adımda
    hazırlar.
 
+## Bluetooth
+
+Port alanının yanındaki Bluetooth düğmesi yakındaki tartıları arar
+(komut satırında: `tartim bluetooth`).
+
+- **Standart Bluetooth tartılar** (Weight Scale / Body Composition servisi
+  olanlar): listeden seçip **Bağlan**'a basın, ölçümler canlı gelir.
+- **Klasik Bluetooth seri cihazlar**: önce sistem ayarlarından eşleştirin
+  (PIN genellikle 0000 ya da 1234), sonra listeden seçip bağlanın.
+- **Üreticiye özel protokoller** (ör. Tartı FAST): henüz doğrudan
+  okunamıyor. Bir **cihaz raporu** gönderirseniz destek ekleyebiliriz.
+  Ayrıntılar: [docs/PROTOKOL.md](docs/PROTOKOL.md#bluetooth)
+
 ## Komut satırı
 
 ```sh
@@ -78,6 +91,8 @@ yazılmadan maskelenir. Bu dosyayı
 gönderin.
 
 - SD kart dosyası için: `tartim rapor --dosya /media/$USER/SD/20261016.CSV`
+- Bluetooth'lu tartılar için: `tartim rapor --bluetooth` (ya da arayüzde
+  "Cihaz raporu → Bluetooth ile…")
 - Daha fazla bilgi vermek isterseniz: `tartim rapor --ayrintili` (cihaz
   ayarlarını, cihaza girilen boy/yaş/cinsiyeti ve ekrandaki tüm değerleri
   sorar; değerleri veriyle karşılaştırıp hangi alanın neye karşılık geldiğini
@@ -126,7 +141,8 @@ hata bildirimlerine ya da bu depoya eklemeyin.
 - [ ] Uzak kip: boy, yaş ve cinsiyetin bilgisayardan cihaza gönderilmesi
 - [x] Masaüstü arayüzü (GTK)
 - [ ] Danışan kaydı ve gelişim grafikleri
-- [ ] Bluetooth bağlantılı cihazlar (ör. Tartı FAST)
+- [x] Bluetooth: standart BLE tartılar, klasik seri port, keşif raporu
+- [ ] Tartı FAST protokolü (cihaz raporu bekleniyor)
 - [ ] PDF ölçüm raporu
 - [x] `.deb` paketi ve tek komutla kurulum
 - [ ] Pardus Mağazası'na başvuru

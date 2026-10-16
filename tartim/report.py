@@ -45,7 +45,8 @@ INPUT_FIELDS = [
     ("Boy (cm)", "Hm"),
     ("Kıyafet ağırlığı / dara (kg)", "Pt"),
 ]
-CONNECTIONS = ["RS-232 (USB-seri çevirici ile)", "USB (doğrudan)", "SD kart dosyası"]
+CONNECTIONS = ["RS-232 (USB-seri çevirici ile)", "USB (doğrudan)", "SD kart dosyası",
+               "Bluetooth"]
 
 _ID_RE = re.compile(rb'(\bID,"?)(\d+)')
 
@@ -109,6 +110,12 @@ def system_info() -> dict:
 
 def port_details(device: str) -> dict:
     """USB kimliği gibi cihaz bilgileri. USB seri numarası bilinçli olarak alınmaz."""
+    if device.lower().startswith("bt:"):
+        from .bluetooth import mask_address, parse_bt_port  # noqa: PLC0415
+
+        address, channel = parse_bt_port(device)
+        return {"device": f"bt:{mask_address(address)}", "transport": "bluetooth-rfcomm",
+                "channel": channel}
     try:
         from serial.tools import list_ports  # noqa: PLC0415
     except ImportError:
@@ -290,11 +297,91 @@ def _pick_port(w: Wizard, ports: list[tuple[str, str]], detailed: bool) -> str:
     return answer
 
 
+def ble_entry(device, result: dict) -> tuple[dict, dict | None]:
+    """BLE yakalamasından rapor kaydı. Bildirimler birleştirilip metin tabanlı
+    protokoller için de çözümlenir; standart tartı verisi varsa o kullanılır."""
+    from .bluetooth import mask_address, standard_values  # noqa: PLC0415
+
+    data = b"".join(bytes.fromhex(n["hex"]) for n in result["notifications"])
+    timing = [[n["t_ms"], len(n["hex"]) // 2] for n in result["notifications"]]
+    entry, target = build_entry(data, timing, source="bluetooth-le")
+    entry["bluetooth"] = {"address": mask_address(device.address), "name": device.name,
+                          "kind": device.kind, "uuids": device.uuids, **result}
+    values = standard_values(result)
+    if values:
+        entry["standard_values"] = values
+        target = {"raw": "", "tokens": [], "recognized": True, "values": values}
+    return entry, target
+
+
+def _pick_bluetooth(w: Wizard, devices: list) -> object:
+    if not devices:
+        raise SystemExit("Bluetooth cihazı bulunamadı. Tartıyı açıp tekrar deneyin.")
+    w.say("\nBulunan Bluetooth cihazları:")
+    for i, d in enumerate(devices, 1):
+        rssi = f"{d.rssi} dBm" if d.rssi is not None else ""
+        w.say(f"  {i}) {d.name or '(adsız)':<24} {d.kind:<22} {rssi}")
+    while True:
+        answer = w.ask("Tartınız hangisi? (numara)", "1", required=True)
+        if answer.isdigit() and 0 < int(answer) <= len(devices):
+            return devices[int(answer) - 1]
+        w.say(f"  1 ile {len(devices)} arasında bir sayı girin.")
+
+
+def _bluetooth_measurements(w: Wizard, report: dict, timeout: float, idle: float,
+                            detailed: bool, session_factory: Callable | None,
+                            port_opener: Callable | None) -> None:
+    from . import bluetooth  # noqa: PLC0415
+
+    w.say("\nTartıyı açın. Yakındaki Bluetooth cihazları taranıyor (10 sn)...")
+    with (session_factory or bluetooth.BlueZ)() as bz:
+        try:
+            devices = bluetooth.scan(bz, 10)
+        except bluetooth.BluetoothError as exc:
+            raise SystemExit(str(exc)) from exc
+        device = _pick_bluetooth(w, devices)
+        report["device"]["connection"] = f"bluetooth ({device.kind})"
+        if device.classic_serial:
+            from . import serial_io  # noqa: PLC0415
+
+            report["port"] = port_details(device.port)
+            conn = (port_opener or serial_io.open_port)(serial_io.PortSettings(device.port))
+            try:
+                w.say(f"\n{device.name or device.address} bağlandı. Şimdi cihazda ölçüm yapın...")
+                data, timing = capture(conn, timeout, idle)
+            finally:
+                conn.close()
+            w.say(f"Veri alındı ({len(data)} bayt)." if data else "Hiç veri gelmedi.")
+            report["measurements"].append(_measurement_entry(
+                w, data, timing, source="bluetooth-rfcomm", detailed=detailed))
+            return
+        w.say(f"\n{device.name or 'Cihaz'} ile bağlantı kuruluyor...")
+        try:
+            result = bluetooth.capture_ble(
+                bz, device, timeout=timeout, idle=idle,
+                on_connected=lambda: w.say(f"Bağlandı. Şimdi cihazda ölçüm yapın "
+                                           f"(en fazla {timeout:g} sn)..."))
+        except bluetooth.BluetoothError as exc:
+            raise SystemExit(str(exc)) from exc
+    count = len(result["notifications"])
+    w.say(f"{count} Bluetooth bildirimi alındı." if count else
+          "Hiç bildirim gelmedi. Bu cihaz, veri göndermeden önce uygulamadan komut bekliyor "
+          "olabilir; rapor yine de cihazın servis yapısını içeriyor.")
+    entry, target = ble_entry(device, result)
+    if target is not None:
+        label, code = SCREEN_FIELDS[0]
+        value = w.ask_number("Ekranda görünen kilo (boş geçebilirsiniz)")
+        if value is not None:
+            entry["screen"].append(compare(target, label, code, value))
+    report["measurements"].append(entry)
+
+
 def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None = None,
                baud: int | None = None, timeout: float = 180.0,
                output: str | None = None, idle: float = 2.0,
                files: list[str] | None = None, detailed: bool = False,
-               ports: list[tuple[str, str]] | None = None) -> Path:
+               ports: list[tuple[str, str]] | None = None, bluetooth: bool = False,
+               bt_session: Callable | None = None) -> Path:
     w.say("=== tartim cihaz raporu ===\n"
           "Cihazınızın veri biçimini öğrenmemiz için bir rapor dosyası hazırlanacak.\n"
           "Danışan numarası maskelenir. Ölçümü kendinizle ya da bir test kişisiyle yapın.\n")
@@ -306,15 +393,19 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
         device["software_version"] = w.ask("Cihaz yazılım sürümü (biliyorsanız)")
         device["output_setting"] = w.ask(
             "PC veri çıkış ayarı (biliyorsanız, ör. 'varsayılan' ya da 'BC-418')")
-        if not files and not port:
+        if not files and not port and not bluetooth:
             w.say("\nBağlantı türü:")
-            if w.choose("Seçiminiz", CONNECTIONS) == 2:
+            choice = w.choose("Seçiminiz", CONNECTIONS)
+            if choice == 2:
                 files = [w.ask("SD karttaki dosyanın yolu", required=True)]
+            bluetooth = choice == 3
     device["connection"] = "SD kart dosyası" if files else "seri port"
 
     report = new_report(device, "ayrintili" if detailed else "hizli")
 
-    if files:
+    if bluetooth:
+        _bluetooth_measurements(w, report, timeout, idle, detailed, bt_session, port_opener)
+    elif files:
         for path in files:
             try:
                 data = Path(path).read_bytes()[:256 * 1024]
@@ -364,7 +455,8 @@ def run_wizard(w: Wizard, port_opener: Callable | None = None, port: str | None 
 def main_from_args(args) -> int:
     try:
         run_wizard(Wizard(), port=args.port, baud=args.baud, timeout=args.sure,
-                   output=args.cikti, files=args.dosya, detailed=args.ayrintili)
+                   output=args.cikti, files=args.dosya, detailed=args.ayrintili,
+                   bluetooth=args.bluetooth)
     except KeyboardInterrupt:
         print("\nİptal edildi, rapor oluşturulmadı.", file=sys.stderr)
         return 130

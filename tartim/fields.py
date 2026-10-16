@@ -62,6 +62,10 @@ _FIELDS = [
     Field("rB", "Bazal metabolizma hızı (BMR)", "kcal", kind="int"),
     Field("rA", "Metabolik yaş", "yıl", kind="int"),
     Field("LP", "Bacak kas skoru", kind="int"),
+    # Standart Bluetooth tartıların ek alanları (tartim'e özgü kodlar)
+    Field("mP", "Kas oranı", "%", confirmed=True),
+    Field("sL", "Yumuşak yağsız kütle", "kg", confirmed=True),
+    Field("Im", "Empedans", "Ω", confirmed=True),
     # Segmental analiz: R sağ kol, L sol kol, r sağ bacak, l sol bacak, T gövde
     Field("FR", "Yağ oranı - sağ kol", "%"),
     Field("FL", "Yağ oranı - sol kol", "%"),

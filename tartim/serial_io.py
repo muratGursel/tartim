@@ -39,6 +39,10 @@ def list_ports() -> list[tuple[str, str]]:
 
 
 def open_port(settings: PortSettings, timeout: float = 0.5):
+    if settings.port.lower().startswith("bt:"):
+        from .bluetooth import RfcommPort, parse_bt_port  # noqa: PLC0415
+
+        return RfcommPort(*parse_bt_port(settings.port), timeout=timeout)
     serial = _serial()
     try:
         return serial.Serial(
