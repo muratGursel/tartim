@@ -55,7 +55,8 @@ Adım adım anlatım için: **[Kullanım kılavuzu](docs/KULLANIM.md)**
 1. Tartının portunu seçip **Bağlan**'a basın.
 2. Cihazda ölçüm yapın; sonuç solda görünür ve otomatik kaydedilir.
 3. Geçmiş ölçümler sağda listelenir. **SD karttan içe aktar** ve **Excel için
-   dışa aktar** düğmeleri buradadır.
+   dışa aktar** düğmeleri buradadır. **Sonuç çıktısı (PDF)** danışanın gelişimini
+   de gösteren iki sayfalık, yazdırılabilir bir sonuç sayfası hazırlar.
 4. **Cihaz raporu** düğmesi, geliştiricilere gönderilecek raporu birkaç adımda
    hazırlar.
 
@@ -83,6 +84,7 @@ tartim ice-aktar /media/$USER/SD/*.CSV # SD karttan içe aktar
 tartim listele --son 10
 tartim disa-aktar --cikti olcumler.csv # Excel / LibreOffice için
 tartim ham --port /dev/ttyUSB0         # yeni cihaz için ham veri
+tartim yazdir --ad "Ad Soyad"          # yazdırılabilir sonuç çıktısı (PDF)
 ```
 
 Port ayarları: `--baud 9600 --parite N --veri-biti 8 --dur-biti 1` (varsayılan).
@@ -172,7 +174,7 @@ hata bildirimlerine ya da bu depoya eklemeyin.
 - [ ] Danışan kaydı ve gelişim grafikleri
 - [x] Bluetooth: standart BLE tartılar, klasik seri port, keşif raporu
 - [ ] Tartı FAST protokolü (cihaz raporu bekleniyor)
-- [ ] PDF ölçüm raporu
+- [x] Gelişim grafikli, yazdırılabilir sonuç çıktısı (PDF)
 - [x] `.deb` paketi ve tek komutla kurulum
 - [x] Türkçe ve İngilizce arayüz ve belgeler
 - [ ] Pardus Mağazası'na başvuru

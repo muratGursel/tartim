@@ -57,6 +57,8 @@ Step-by-step instructions: **[User guide](docs/USER_GUIDE.md)**
    automatically.
 3. Saved measurements are listed on the right, with **Import from SD card** and
    **Export for Excel**.
+   **Result sheet (PDF)** creates a printable two-page result sheet with the
+   client's progress.
 4. **Device report** prepares a report for the developers in a few steps.
 
 ## Bluetooth
@@ -81,6 +83,7 @@ tartim import /media/$USER/SD/*.CSV    # import from an SD card
 tartim list --last 10
 tartim export --output measurements.csv  # for Excel / LibreOffice
 tartim raw --port /dev/ttyUSB0         # raw data for a new device
+tartim print --name "First Last"      # printable result sheet (PDF)
 ```
 
 The Turkish command names of earlier releases (`dinle`, `ice-aktar`, `rapor`, …)
@@ -170,7 +173,7 @@ bug reports or to this repository.
 - [ ] Client records and progress charts
 - [x] Bluetooth: standard BLE scales, classic serial port, discovery report
 - [ ] Tartı FAST protocol (waiting for a device report)
-- [ ] PDF measurement report
+- [x] Printable result sheet (PDF) with progress charts
 - [x] `.deb` package and one-command installation
 - [x] Turkish and English interface and documentation
 - [ ] Submission to the Pardus Store

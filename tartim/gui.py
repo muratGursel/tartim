@@ -263,8 +263,13 @@ class MainWindow(Gtk.ApplicationWindow):
         export.set_tooltip_text(_("Write all measurements to a CSV file that Excel and "
                                   "LibreOffice can open"))
         export.connect("clicked", self.on_export)
+        self.print_button = Gtk.Button(label=_("Result sheet (PDF)…"))
+        self.print_button.set_tooltip_text(_("Create a printable result sheet of the selected "
+                                             "measurement (or the latest one)"))
+        self.print_button.connect("clicked", self.on_print)
         buttons.pack_start(sd, False, False, 0)
         buttons.pack_end(export, False, False, 0)
+        buttons.pack_end(self.print_button, False, False, 0)
         box.pack_start(buttons, False, False, 0)
         return frame
 
@@ -486,6 +491,63 @@ class MainWindow(Gtk.ApplicationWindow):
                              skipped).format(n=skipped),
                     ngettext("{n} record not recognized", "{n} records not recognized",
                              unknown).format(n=unknown)]) + ".")
+        dialog.destroy()
+
+    def selected_record(self) -> int | None:
+        model, it = self.history_view.get_selection().get_selected()
+        return model[it][0] if it is not None else None
+
+    def ask_client_name(self) -> str | None:
+        """Asks for the name to print on the sheet; None if cancelled. Not saved."""
+        dialog = Gtk.Dialog(title=_("Result sheet"), transient_for=self, modal=True)
+        dialog.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL,
+                           _("Create PDF"), Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        box = dialog.get_content_area()
+        box.set_spacing(8)
+        box.set_margin_start(16)
+        box.set_margin_end(16)
+        box.set_margin_top(12)
+        box.set_margin_bottom(12)
+        box.add(Gtk.Label(label=_("Client name to print on the sheet (optional). It is only "
+                                  "printed, not saved."), xalign=0, wrap=True,
+                          max_width_chars=50))
+        entry = Gtk.Entry(activates_default=True)
+        box.add(entry)
+        dialog.show_all()
+        response = dialog.run()
+        name = entry.get_text().strip()
+        dialog.destroy()
+        return name if response == Gtk.ResponseType.OK else None
+
+    def on_print(self, *args):
+        from . import printout  # noqa: PLC0415
+
+        try:
+            current, history = printout.entries(self.store, record_id=self.selected_record())
+        except LookupError as exc:
+            self.show_message(Gtk.MessageType.INFO, _("Result sheet"), str(exc))
+            return
+        name = self.ask_client_name()
+        if name is None:
+            return
+        dialog = self._file_dialog(_("Save the result sheet"), Gtk.FileChooserAction.SAVE,
+                                   _("Save"))
+        dialog.set_do_overwrite_confirmation(True)
+        docs = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
+        if docs and Path(docs).is_dir():
+            dialog.set_current_folder(docs)
+        dialog.set_current_name(printout.default_name(current))
+        if dialog.run() == Gtk.ResponseType.ACCEPT:
+            try:
+                path = printout.write_pdf(dialog.get_filename(), current, history,
+                                          client_name=name)
+            except (RuntimeError, OSError) as exc:
+                self.show_message(Gtk.MessageType.ERROR, _("Could not create the result sheet"),
+                                  str(exc))
+            else:
+                self.set_status(_("Result sheet written: {path}").format(path=path))
+                self.open_uri(path.resolve().as_uri())
         dialog.destroy()
 
     def on_export(self, *args):

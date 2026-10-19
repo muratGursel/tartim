@@ -91,6 +91,10 @@ class Store:
             args.append(limit)
         return self._db.execute(sql, args).fetchall()
 
+    def get(self, record_id: int) -> sqlite3.Row | None:
+        return self._db.execute("SELECT * FROM measurements WHERE id = ?",
+                                (record_id,)).fetchone()
+
     def measurements(self, **kwargs) -> list[Measurement]:
         return [parse(row["raw"]) for row in self.list(**kwargs)]
 

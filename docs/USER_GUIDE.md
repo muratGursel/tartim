@@ -16,7 +16,7 @@ and how to send a device report to the developers. No computer skills needed.
 3. [Connecting the scale with a cable](#3-connecting-the-scale-with-a-cable)
 4. [Connecting the scale over Bluetooth](#4-connecting-the-scale-over-bluetooth)
 5. [Taking measurements](#5-taking-measurements)
-6. [Saved measurements, SD card and Excel](#6-saved-measurements-sd-card-and-excel)
+6. [Saved measurements, SD card, Excel and the result sheet](#6-saved-measurements-sd-card-excel-and-the-result-sheet)
 7. [Preparing and sending a device report](#7-preparing-and-sending-a-device-report)
 8. [Troubleshooting](#8-troubleshooting)
 9. [Protecting personal data](#9-protecting-personal-data)
@@ -145,7 +145,7 @@ You do this once per device.
 
 ---
 
-## 6. Saved measurements, SD card and Excel
+## 6. Saved measurements, SD card, Excel and the result sheet
 
 **A saved measurement:** click a row in the list on the right; its details
 appear on the left. Click the column headers to sort.
@@ -162,6 +162,33 @@ appear on the left. Click the column headers to sort.
 1. Press **Export for Excel…**.
 2. Give the file a name and press **Save**.
 3. Open the file with LibreOffice Calc or Excel.
+
+**Result sheet (PDF):** a printable result page you can hand to the client.
+
+1. Select the measurement in the list on the right (without a selection the
+   latest measurement is used).
+2. Press **Result sheet (PDF)…**.
+3. Optionally type the client's name. It is only printed on the sheet and never
+   saved. Press **Create PDF**.
+4. Give the file a name and press **Save**. The PDF opens; print it from there.
+
+The first page analyses the measurement: body composition, segmental muscle and
+fat distribution, metabolism, a low/normal/high assessment of BMI, body fat,
+body water and visceral fat, the ideal weight range and a mass analysis. If the
+client has more than one measurement, the second page shows a **difference
+analysis** table and a **progress chart**.
+
+![Result sheet, page 1 (synthetic example)](screenshots/en/12-result-sheet-1.png)
+
+![Result sheet, page 2: difference analysis (synthetic example)](screenshots/en/12-result-sheet-2.png)
+
+> The assessment uses published reference ranges: the World Health Organization
+> for BMI, Gallagher et al. (2000) by gender and age for body fat, and the ranges
+> Tanita publishes for body water and visceral fat. The sheet is not a medical
+> diagnosis.
+
+From the command line: `tartim print --name "First Last"` (latest measurement)
+or `tartim print --record 12`.
 
 ---
 

@@ -16,7 +16,7 @@ adım anlatır. Bilgisayar bilgisi gerektirmez.
 3. [Tartıyı kabloyla bağlamak](#3-tartıyı-kabloyla-bağlamak)
 4. [Tartıyı Bluetooth ile bağlamak](#4-tartıyı-bluetooth-ile-bağlamak)
 5. [Ölçüm almak](#5-ölçüm-almak)
-6. [Geçmiş ölçümler, SD kart ve Excel](#6-geçmiş-ölçümler-sd-kart-ve-excel)
+6. [Geçmiş ölçümler, SD kart, Excel ve sonuç çıktısı](#6-geçmiş-ölçümler-sd-kart-excel-ve-sonuç-çıktısı)
 7. [Cihaz raporu hazırlamak ve göndermek](#7-cihaz-raporu-hazırlamak-ve-göndermek)
 8. [Sorun giderme](#8-sorun-giderme)
 9. [Kişisel verilerin korunması](#9-kişisel-verilerin-korunması)
@@ -141,7 +141,7 @@ Bu işlem her cihaz için bir kez yapılır.
 
 ---
 
-## 6. Geçmiş ölçümler, SD kart ve Excel
+## 6. Geçmiş ölçümler, SD kart, Excel ve sonuç çıktısı
 
 **Geçmiş ölçüm:** Sağdaki listede bir satıra tıklayın; ayrıntıları solda görünür.
 Sütun başlıklarına tıklayarak sıralayabilirsiniz.
@@ -159,6 +159,32 @@ Sütun başlıklarına tıklayarak sıralayabilirsiniz.
 1. **Excel için dışa aktar…** düğmesine basın.
 2. Dosyaya bir ad verip **Kaydet**'e basın.
 3. Dosyayı LibreOffice Calc ya da Excel ile açabilirsiniz.
+
+**Sonuç çıktısı (PDF):** danışana verebileceğiniz, yazdırılabilir bir sonuç sayfası.
+
+1. Sağdaki listede ölçümü seçin (seçmezseniz son ölçüm kullanılır).
+2. **Sonuç çıktısı (PDF)…** düğmesine basın.
+3. İsterseniz danışanın adını yazın. Ad yalnızca çıktıya yazılır, hiçbir yere
+   kaydedilmez. **PDF oluştur**'a basın.
+4. Dosyaya bir ad verip **Kaydet**'e basın. PDF açılır; oradan yazdırabilirsiniz.
+
+Çıktının ilk sayfasında ölçümün analizi bulunur: vücut kompozisyonu, segmental
+kas ve yağ dağılımı, metabolizma, BMI, yağ oranı, sıvı oranı ve viseral yağ için
+düşük/normal/yüksek değerlendirmesi, ideal kilo aralığı ve kütlesel analiz.
+Danışanın birden fazla ölçümü varsa ikinci sayfada **fark analizi** tablosu ve
+**fark grafiği** yer alır.
+
+![Sonuç çıktısı, 1. sayfa (sentetik örnek)](screenshots/tr/12-result-sheet-1.png)
+
+![Sonuç çıktısı, 2. sayfa: fark analizi (sentetik örnek)](screenshots/tr/12-result-sheet-2.png)
+
+> Değerlendirmede yayımlanmış başvuru aralıkları kullanılır: BMI için Dünya
+> Sağlık Örgütü, yağ oranı için cinsiyet ve yaşa göre Gallagher ve ark. (2000),
+> sıvı oranı ve viseral yağ için Tanita'nın yayımladığı aralıklar. Çıktı tıbbi
+> teşhis yerine geçmez.
+
+Komut satırından: `tartim yazdir --ad "Ad Soyad"` (son ölçüm) ya da
+`tartim yazdir --kayit 12`.
 
 ---
 

@@ -999,3 +999,210 @@ msgstr "Tartım masaüstü arayüzü"
 
 msgid "SQLite file"
 msgstr "SQLite dosyası"
+
+msgid "BMR / kg"
+msgstr "BMR / kilo"
+
+msgid "Basal metabolic rate"
+msgstr "Bazal metabolizma hızı"
+
+msgid "Body composition (kg)"
+msgstr "Vücut kompozisyonu (kg)"
+
+msgid "Body composition analysis"
+msgstr "Vücut kompozisyonu analizi"
+
+msgid "Body composition analyzer"
+msgstr "Vücut kompozisyon analizörü"
+
+msgid "Body fat %"
+msgstr "Yağ %"
+
+msgid "Body water"
+msgstr "Sıvı oranı"
+
+msgid "Bone"
+msgstr "Kemik"
+
+msgid "Client name to print on the sheet (not saved)"
+msgstr "Çıktıya yazılacak danışan adı (kaydedilmez)"
+
+msgid "Client name to print on the sheet (optional). It is only printed, not saved."
+msgstr "Çıktıya yazılacak danışan adı (isteğe bağlı). Yalnızca çıktıda görünür, kaydedilmez."
+
+msgid "Client number (default: the client of the latest measurement)"
+msgstr "Danışan numarası (varsayılan: son ölçümün danışanı)"
+
+msgid "Could not create the result sheet"
+msgstr "Sonuç çıktısı oluşturulamadı"
+
+msgid "Create PDF"
+msgstr "PDF oluştur"
+
+msgid "Create a printable result sheet of the selected measurement (or the latest one)"
+msgstr "Seçili ölçümün (seçim yoksa son ölçümün) yazdırılabilir sonuç çıktısını oluştur"
+
+msgid "Create the result sheet (PDF) of a measurement"
+msgstr "Bir ölçümün sonuç çıktısını (PDF) oluştur"
+
+msgid "Creating the result sheet needs ReportLab. To install it on Pardus: sudo apt install python3-reportlab"
+msgstr "Sonuç çıktısı için ReportLab gerekli. Pardus'ta kurmak için: sudo apt install python3-reportlab"
+
+msgid "Device: {model} · tartim {version}"
+msgstr "Cihaz: {model} · tartim {version}"
+
+msgid "Diff."
+msgstr "Fark"
+
+msgid "Difference analysis"
+msgstr "Fark analizi"
+
+msgid "Extracellular / total water"
+msgstr "Hücre dışı su / toplam su"
+
+msgid "Fat"
+msgstr "Yağ"
+
+msgid "Fat (%)"
+msgstr "Yağ (%)"
+
+msgid "Fat kg"
+msgstr "Yağ kg"
+
+msgid "Fat-free"
+msgstr "Yağ dışı"
+
+msgid "Fat-free kg"
+msgstr "Yağ dışı kg"
+
+msgid "High"
+msgstr "Yüksek"
+
+msgid "Ideal weight (BMI 22): {ideal} kg · normal range {lower} – {upper} kg"
+msgstr "İdeal kilo (BMI 22): {ideal} kg · normal aralık {lower} – {upper} kg"
+
+msgid "L arm"
+msgstr "Sol kol"
+
+msgid "L leg"
+msgstr "Sol bacak"
+
+msgid "Left arm"
+msgstr "Sol kol"
+
+msgid "Left leg"
+msgstr "Sol bacak"
+
+msgid "Low"
+msgstr "Düşük"
+
+msgid "Mass analysis"
+msgstr "Kütlesel analiz"
+
+msgid "Metabolism"
+msgstr "Metabolizma"
+
+msgid "Muscle"
+msgstr "Kas"
+
+msgid "Muscle (kg)"
+msgstr "Kas (kg)"
+
+msgid "Muscle kg"
+msgstr "Kas kg"
+
+msgid "Name"
+msgstr "Adı soyadı"
+
+msgid "No font with Turkish letters was found. Install it with: sudo apt install fonts-dejavu-core"
+msgstr "Türkçe harfleri içeren bir yazı tipi bulunamadı. Kurmak için: sudo apt install fonts-dejavu-core"
+
+msgid "No measurement with number {number}."
+msgstr "{number} numaralı ölçüm yok."
+
+msgid "No reference range for this measurement (adults, gender and age needed)."
+msgstr "Bu ölçüm için başvuru aralığı yok (yetişkin, cinsiyet ve yaş bilgisi gerekir)."
+
+msgid "No values"
+msgstr "Değer yok"
+
+msgid "Normal"
+msgstr "Normal"
+
+msgid "Not a medical diagnosis."
+msgstr "Tıbbi teşhis yerine geçmez."
+
+msgid "PDF file (default: result-CLIENT-DATE.pdf)"
+msgstr "PDF dosyası (varsayılan: sonuc-DANISAN-TARIH.pdf)"
+
+msgid "Page {page}"
+msgstr "Sayfa {page}"
+
+msgid "Progress chart (kg)"
+msgstr "Fark grafiği (kg)"
+
+msgid "R arm"
+msgstr "Sağ kol"
+
+msgid "R leg"
+msgstr "Sağ bacak"
+
+msgid "Record no: {number}"
+msgstr "Ölçüm no: {number}"
+
+msgid "Record number (default: the latest measurement)"
+msgstr "Ölçüm numarası (varsayılan: son ölçüm)"
+
+msgid "Report printed: {when}"
+msgstr "Rapor tarihi: {when}"
+
+msgid "Result sheet"
+msgstr "Sonuç çıktısı"
+
+msgid "Result sheet (PDF)…"
+msgstr "Sonuç çıktısı (PDF)…"
+
+msgid "Result sheet written: {path}"
+msgstr "Sonuç çıktısı yazıldı: {path}"
+
+msgid "Right arm"
+msgstr "Sağ kol"
+
+msgid "Right leg"
+msgstr "Sağ bacak"
+
+msgid "SEGMENTAL BODY COMPOSITION ANALYSIS"
+msgstr "BÖLÜMLENDİRİLMİŞ VÜCUT ANALİZİ"
+
+msgid "Save the result sheet"
+msgstr "Sonuç çıktısını kaydet"
+
+msgid "Segmental analysis"
+msgstr "Segmental vücut kompozisyonu analizi"
+
+msgid "Segmental fat (%)"
+msgstr "Segmental yağ dağılımı (%)"
+
+msgid "Segmental muscle (kg)"
+msgstr "Segmental kas dağılımı (kg)"
+
+msgid "There are no saved measurements to print."
+msgstr "Çıktısı alınacak kayıtlı ölçüm yok."
+
+msgid "This device does not report segmental values."
+msgstr "Bu cihaz segmental değer göndermiyor."
+
+msgid "Trunk"
+msgstr "Gövde"
+
+msgid "Water"
+msgstr "Sıvı"
+
+msgid "Water kg"
+msgstr "Sıvı kg"
+
+msgid "result"
+msgstr "sonuc"
+
+msgid "tartim · open-source software (GPL-3.0-or-later)"
+msgstr "tartim · açık kaynak yazılım (GPL-3.0-or-later)"

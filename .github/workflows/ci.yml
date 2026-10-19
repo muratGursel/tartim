@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Dependencies
-        run: sudo apt-get update -q && sudo apt-get install -y -q python3-serial python3-yaml socat
+        run: sudo apt-get update -q && sudo apt-get install -y -q python3-serial python3-yaml python3-reportlab fonts-dejavu-core socat
       - name: Tests
         run: python3 -m unittest -v
 

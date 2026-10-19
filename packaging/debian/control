@@ -3,7 +3,8 @@ Version: @VERSION@
 Architecture: all
 Maintainer: Murat GÜRSEL <muratgursel@gmail.com>
 Installed-Size: @SIZE@
-Depends: python3 (>= 3.11), python3-serial (>= 3.5), python3-gi, gir1.2-gtk-3.0
+Depends: python3 (>= 3.11), python3-serial (>= 3.5), python3-gi, gir1.2-gtk-3.0,
+ python3-reportlab, fonts-dejavu-core
 Recommends: bluez
 Suggests: socat
 Section: science
@@ -13,5 +14,6 @@ Description: Tanita-compatible body composition analyzer reader
  Reads the measurements that body composition analyzers send over a serial
  port (RS-232 / USB) or Bluetooth, decodes them and stores them in a local
  database. Imports SD card files, exports measurements as CSV and prepares
- device reports for the developers. Includes a desktop interface and a
+ device reports for the developers, and prints a result sheet (PDF) with
+ progress charts. Includes a desktop interface and a
  command line tool, in Turkish and English.

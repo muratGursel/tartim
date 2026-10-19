@@ -196,6 +196,21 @@ def cmd_send_report(args) -> int:
     return send_saved(args.file, note=args.note)
 
 
+def cmd_print(args) -> int:
+    from . import printout  # noqa: PLC0415
+
+    with Store(args.database) as store:
+        try:
+            current, history = printout.entries(store, record_id=args.record,
+                                                subject_id=args.client)
+            path = printout.write_pdf(args.output or printout.default_name(current), current,
+                                      history, client_name=args.name)
+        except (LookupError, RuntimeError) as exc:
+            raise SystemExit(str(exc)) from exc
+    print(_("Result sheet written: {path}").format(path=path))
+    return 0
+
+
 def cmd_simulate(args) -> int:
     from .simulator import synthetic_record  # noqa: PLC0415
 
@@ -283,6 +298,17 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("file")
     s.add_argument("--note", "--not", default="", help=_("Short note (optional)"))
     s.set_defaults(func=cmd_send_report)
+
+    s = sub.add_parser("print", aliases=["yazdir"],
+                       help=_("Create the result sheet (PDF) of a measurement"))
+    s.add_argument("--record", "--kayit", type=int,
+                   help=_("Record number (default: the latest measurement)"))
+    s.add_argument("--client", "--danisan",
+                   help=_("Client number (default: the client of the latest measurement)"))
+    s.add_argument("--name", "--ad", default="",
+                   help=_("Client name to print on the sheet (not saved)"))
+    s.add_argument("--output", "--cikti", help=_("PDF file (default: result-CLIENT-DATE.pdf)"))
+    s.set_defaults(func=cmd_print)
 
     s = sub.add_parser("simulate", aliases=["simule"],
                        help=_("Virtual scale: send synthetic measurements to a port"))
