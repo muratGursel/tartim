@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import __version__, reference
+from .clients import Client
 from .i18n import N_, _, current_language
 from .protocol import Measurement, parse
 
@@ -42,23 +43,38 @@ SEGMENTS = [
     (N_("Trunk"), "FT", "mT"),
 ]
 
+FILLED_NAMES = {"GE": N_("gender"), "AG": N_("age"), "Hm": N_("height"), "Bt": N_("body type")}
+
 
 @dataclass
 class Entry:
-    """One stored measurement with its record number and time."""
+    """One stored measurement with its record number, time and client."""
     record_id: int
     when: datetime
     m: Measurement
+    subject: str | None = None       # client number, also when assigned by hand
+    client: Client | None = None
+    filled: tuple[str, ...] = ()     # input codes taken from the client record
 
     @classmethod
-    def from_row(cls, row) -> "Entry":
+    def from_row(cls, row, client: Client | None = None) -> "Entry":
         m = parse(row["raw"])
         when = m.measured_at() or datetime.fromisoformat(row["measured_at"] or row["received_at"])
-        return cls(row["id"], when, m)
+        filled: list[str] = []
+        if client is not None:
+            values, filled = client.fill(m.values, when)
+            m = Measurement(m.raw, values)
+        return cls(row["id"], when, m, row["subject_id"] or m.subject_id, client, tuple(filled))
 
     def get(self, code: str) -> float | None:
         value = self.m.values.get(code)
         return value if isinstance(value, (int, float)) else None
+
+    @property
+    def name(self) -> str:
+        if self.client is not None:
+            return self.client.name
+        return _("Client {number}").format(number=self.subject) if self.subject else ""
 
 
 def entries(store, record_id: int | None = None,
@@ -73,10 +89,12 @@ def entries(store, record_id: int | None = None,
         if not rows:
             raise LookupError(_("There are no saved measurements to print."))
         row = rows[0]
-    current = Entry.from_row(row)
-    if current.m.subject_id is None:
+    subject = row["subject_id"]
+    client = store.client(subject)
+    current = Entry.from_row(row, client)
+    if subject is None:
         return current, [current]
-    history = [Entry.from_row(r) for r in store.list(subject_id=current.m.subject_id)
+    history = [Entry.from_row(r, client) for r in store.list(subject_id=subject)
                if r["id"] <= current.record_id and parse(r["raw"]).recognized]
     history.sort(key=lambda e: (e.when, e.record_id))
     return current, history
@@ -266,8 +284,7 @@ class _Sheet:
         bmi = e.get("MI") or reference.bmi(e.get("Wk"), e.get("Hm"))
         gender = describe("GE").display(e.get("GE")) if e.get("GE") is not None else "–"
         body = describe("Bt").display(e.get("Bt")) if e.get("Bt") is not None else "–"
-        name = self.client_name or (_("Client {number}").format(number=e.m.subject_id)
-                                    if e.m.subject_id else "–")
+        name = self.client_name or e.name or "–"
         rows = [[_("Name"), _("Gender"), _("Body type"), _("Age"), _("Height"), _("Weight"),
                  "BMI", _("Body fat %")],
                 [name, gender, body, number(e.get("AG"), 0), number(e.get("Hm"), 1),
@@ -477,6 +494,10 @@ class _Sheet:
             items.insert(0, self.p(_("Ideal weight (BMI 22): {ideal} kg · normal range "
                                      "{lower} – {upper} kg").format(
                 ideal=number(ideal), lower=number(lower), upper=number(upper))))
+        if e.filled:
+            names = ", ".join(_(FILLED_NAMES[code]) for code in e.filled)
+            items.append(self.p(_("Not sent by the device, taken from the client record: "
+                                  "{names}.").format(names=names), self.small))
         return items
 
     def mass_analysis(self):
@@ -622,5 +643,5 @@ def write_pdf(path: str | Path, current: Entry, history: list[Entry],
 
 
 def default_name(current: Entry) -> str:
-    client = current.m.subject_id or "0"
+    client = current.subject or "0"
     return _("result") + f"-{client}-{current.when:%Y%m%d-%H%M}.pdf"

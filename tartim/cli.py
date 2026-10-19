@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 
 from . import __version__
+from .clients import ATHLETIC, FEMALE, MALE, STANDARD, Client, parse_date
 from .fields import describe
 from .i18n import _, ngettext
 from .protocol import Measurement, parse
@@ -133,17 +134,18 @@ def cmd_import(args) -> int:
 def cmd_list(args) -> int:
     with Store(args.database) as store:
         rows = store.list(limit=args.last, subject_id=args.client)
+        names = {c.number: c.name for c in store.clients()}
     if args.json:
         print(json.dumps([{**dict(r), "values_json": json.loads(r["values_json"])} for r in rows],
                          ensure_ascii=False, indent=2))
         return 0
     print(f"{_('No'):>5}  {_('Measured at'):<19}  {_('Model'):<8}  {_('Client'):<10}  "
-          f"{_('Weight'):>6}")
+          f"{_('Weight'):>6}  {_('Name')}")
     for r in rows:
         when = r["measured_at"] or r["received_at"]
         weight = f"{r['weight']:.1f}" if r["weight"] is not None else "-"
         print(f"{r['id']:>5}  {when:<19}  {r['model'] or '-':<8}  "
-              f"{r['subject_id'] or '-':<10}  {weight:>6}")
+              f"{r['subject_id'] or '-':<10}  {weight:>6}  {names.get(r['subject_id'], '')}")
     return 0
 
 
@@ -208,6 +210,114 @@ def cmd_print(args) -> int:
         except (LookupError, RuntimeError) as exc:
             raise SystemExit(str(exc)) from exc
     print(_("Result sheet written: {path}").format(path=path))
+    return 0
+
+
+def _gender(text: str) -> int:
+    value = text.strip().lower()
+    if value in ("1", "m", "male", "e", "erkek"):
+        return MALE
+    if value in ("2", "f", "female", "k", "kadin", "kadın"):
+        return FEMALE
+    raise argparse.ArgumentTypeError(_("use male or female"))
+
+
+def _body_type(text: str) -> int:
+    value = text.strip().lower()
+    if value in ("0", "standard", "standart"):
+        return STANDARD
+    if value in ("2", "athletic", "atletik"):
+        return ATHLETIC
+    raise argparse.ArgumentTypeError(_("use standard or athletic"))
+
+
+def _birth(text: str):
+    try:
+        return parse_date(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _client_line(c: Client) -> str:
+    gender = describe("GE").display(c.gender) if c.gender else "-"
+    birth = c.birth_date.isoformat() if c.birth_date else "-"
+    age = c.age_at()
+    height = f"{c.height:g}" if c.height else "-"
+    return (f"{c.number:>8}  {c.name:<28}  {gender:<7}  {birth:<10} "
+            f"{'' if age is None else age:>4}  {height:>6}  {c.note}")
+
+
+def cmd_client_list(args) -> int:
+    with Store(args.database) as store:
+        clients = store.clients(args.search or "")
+    if not clients:
+        print(_("No client found."))
+        return 0
+    print(f"{_('Number'):>8}  {_('Name'):<28}  {_('Gender'):<7}  {_('Born'):<10} "
+          f"{_('Age'):>4}  {_('Height'):>6}  {_('Note')}")
+    for c in clients:
+        print(_client_line(c))
+    return 0
+
+
+def cmd_client_save(args) -> int:
+    with Store(args.database) as store:
+        old = store.client(args.number)
+        try:
+            if args.client_command == "add":
+                if old:
+                    raise ValueError(_("Client number {number} is already used.").format(
+                        number=old.number))
+                client = Client(args.number, args.name or "", args.gender, args.birth,
+                                args.height, args.body_type or STANDARD, args.note or "")
+            else:
+                if old is None:
+                    raise LookupError(_("No client with number {number}.").format(
+                        number=args.number))
+                changes = {key: value for key, value in (
+                    ("number", args.new_number), ("name", args.name), ("gender", args.gender),
+                    ("birth_date", args.birth), ("height", args.height),
+                    ("body_type", args.body_type), ("note", args.note)) if value is not None}
+                client = old.with_changes(**changes)
+            store.save_client(client, replace_number=old.number if old else None)
+        except (ValueError, LookupError) as exc:
+            raise SystemExit(str(exc)) from exc
+    print(_("Client saved:"))
+    print(_client_line(client))
+    return 0
+
+
+def cmd_client_delete(args) -> int:
+    with Store(args.database) as store:
+        client = store.client(args.number)
+        if client is None:
+            raise SystemExit(_("No client with number {number}.").format(number=args.number))
+        deleted = store.delete_client(client.number, with_measurements=args.with_measurements)
+    print(_("Client {number} deleted.").format(number=client.number))
+    if args.with_measurements:
+        print(ngettext("{n} measurement deleted.", "{n} measurements deleted.",
+                       deleted).format(n=deleted))
+    return 0
+
+
+def cmd_assign(args) -> int:
+    if args.none:
+        args.client = None
+    with Store(args.database) as store:
+        if args.client is not None and store.client(args.client) is None:
+            raise SystemExit(_("No client with number {number}. Add it first: "
+                               "tartim client add {number} --name \"...\"").format(
+                number=args.client))
+        try:
+            store.assign(args.record, args.client)
+        except LookupError as exc:
+            raise SystemExit(str(exc)) from exc
+    if args.client is None:
+        print(_("Measurement {record} is no longer linked to a client.").format(
+            record=args.record))
+    else:
+        print(_("Measurement {record} assigned to client {number}.").format(
+            record=args.record, number=args.client))
     return 0
 
 
@@ -306,9 +416,47 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--client", "--danisan",
                    help=_("Client number (default: the client of the latest measurement)"))
     s.add_argument("--name", "--ad", default="",
-                   help=_("Client name to print on the sheet (not saved)"))
+                   help=_("Name to print on the sheet (default: from the client record)"))
     s.add_argument("--output", "--cikti", help=_("PDF file (default: result-CLIENT-DATE.pdf)"))
     s.set_defaults(func=cmd_print)
+
+    s = sub.add_parser("client", aliases=["danisan"],
+                       help=_("Client records (name, gender, birth date, height)"))
+    csub = s.add_subparsers(dest="client_command", required=True, metavar=_("COMMAND"))
+    c = csub.add_parser("list", aliases=["listele"], help=_("List clients"))
+    c.add_argument("search", nargs="?", help=_("Part of a name or number"))
+    c.set_defaults(func=cmd_client_list)
+    for name, alias, text in (("add", "ekle", _("Add a client")),
+                              ("edit", "duzenle", _("Change a client's details"))):
+        c = csub.add_parser(name, aliases=[alias], help=text)
+        c.add_argument("number", help=_("Client number, as entered on the device"))
+        c.add_argument("--name", "--ad", required=name == "add", help=_("First and last name"))
+        c.add_argument("--gender", "--cinsiyet", type=_gender, help=_("male or female"))
+        c.add_argument("--birth", "--dogum", type=_birth,
+                       help=_("Birth date, e.g. 1977-05-01 or 01.05.1977"))
+        c.add_argument("--height", "--boy", type=float, help=_("Height in cm"))
+        c.add_argument("--body-type", "--vucut-tipi", type=_body_type,
+                       help=_("standard or athletic"))
+        c.add_argument("--note", "--not", help=_("Short note (optional)"))
+        if name == "edit":
+            c.add_argument("--new-number", "--yeni-numara",
+                           help=_("Change the client number (measurements follow)"))
+        else:
+            c.set_defaults(new_number=None)
+        c.set_defaults(func=cmd_client_save, client_command=name)
+    c = csub.add_parser("delete", aliases=["sil"], help=_("Delete a client record"))
+    c.add_argument("number")
+    c.add_argument("--with-measurements", "--olcumlerle", action="store_true",
+                   help=_("Also delete the client's measurements"))
+    c.set_defaults(func=cmd_client_delete)
+
+    s = sub.add_parser("assign", aliases=["ata"],
+                       help=_("Link a measurement to a client"))
+    s.add_argument("--record", "--kayit", type=int, required=True, help=_("Record number"))
+    group = s.add_mutually_exclusive_group(required=True)
+    group.add_argument("--client", "--danisan", help=_("Client number"))
+    group.add_argument("--none", "--hicbiri", action="store_true", help=_("Remove the link"))
+    s.set_defaults(func=cmd_assign)
 
     s = sub.add_parser("simulate", aliases=["simule"],
                        help=_("Virtual scale: send synthetic measurements to a port"))

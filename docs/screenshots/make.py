@@ -14,6 +14,7 @@ match the file names in docs/screenshots/<language>/. The language is ``tr`` or 
 import random
 import sys
 import tempfile
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -30,6 +31,7 @@ from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 from tartim import gui  # noqa: E402
 from tartim.bluetooth import SPP_UUID, WEIGHT_SCALE_SERVICE, BtDevice  # noqa: E402
+from tartim.clients import Client  # noqa: E402
 from tartim.i18n import _  # noqa: E402
 from tartim.protocol import parse  # noqa: E402
 from tartim.report import build_entry  # noqa: E402
@@ -40,10 +42,12 @@ from tartim.storage import Store  # noqa: E402
 EXAMPLES = {
     "tr": {"smart_scale": "Akıllı Tartı", "weight": "72,4",
            "report_path": "/home/kullanici/Belgeler/tartim-report-MC780MA-20261016-104512.json",
-           "note": "Cihaz ekranında yağ oranı 24,1 görünüyordu"},
+           "note": "Cihaz ekranında yağ oranı 24,1 görünüyordu",
+           "clients": ["Deniz Kaya", "Umut Aydın", "Ekin Şahin"], "client_note": "Haftalık takip"},
     "en": {"smart_scale": "Smart Scale", "weight": "72.4",
            "report_path": "/home/user/Documents/tartim-report-MC780MA-20261016-104512.json",
-           "note": "The device display showed 24.1 % body fat"},
+           "note": "The device display showed 24.1 % body fat",
+           "clients": ["Alex Morgan", "Sam Taylor", "Robin Lee"], "client_note": "Weekly check"},
 }[LANGUAGE]
 
 DEVICES = [
@@ -61,6 +65,12 @@ def main():
     store = Store(Path(tempfile.mkdtemp()) / "example.db")
     rng = random.Random(4)
     records = [synthetic_record(subject=i, rng=rng) for i in (12, 7, 3)]
+    # Made-up clients for the synthetic measurements.
+    for record, name in zip(records, EXAMPLES["clients"]):
+        m = parse(record)
+        born = date(date.today().year - m.values["AG"], 3, 14)
+        store.save_client(Client(m.subject_id, name, m.values["GE"], born, m.values["Hm"],
+                                 note=EXAMPLES["client_note"] if m.subject_id == "7" else ""))
 
     app = Gtk.Application(flags=Gio.ApplicationFlags.NON_UNIQUE)
     ctx: dict = {}
@@ -145,7 +155,20 @@ def main():
         dialog.note_entry.set_text(EXAMPLES["note"])
         dialog._update_send_ui()
 
-    steps = [step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8]
+    def step_9():  # 13-clients: the client list
+        ctx.pop("dialog").close_dialog()
+        dialog = gui.ClientsDialog(ctx["win"])
+        dialog.move(200, 120)
+        ctx["dialog"] = ctx["clients"] = dialog
+
+    def step_10():  # 14-client-form: a client's details
+        clients = ctx["clients"]
+        form = gui.ClientForm(clients, store.client("7"))
+        form.move(330, 170)
+        ctx["dialog"] = form
+
+    steps = [step_0, step_1, step_2, step_3, step_4, step_5, step_6, step_7, step_8, step_9,
+             step_10]
 
     def write_geometry():
         """Writes where the window to capture is (for cropping the screenshot)."""

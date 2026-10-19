@@ -1024,12 +1024,6 @@ msgstr "Sıvı oranı"
 msgid "Bone"
 msgstr "Kemik"
 
-msgid "Client name to print on the sheet (not saved)"
-msgstr "Çıktıya yazılacak danışan adı (kaydedilmez)"
-
-msgid "Client name to print on the sheet (optional). It is only printed, not saved."
-msgstr "Çıktıya yazılacak danışan adı (isteğe bağlı). Yalnızca çıktıda görünür, kaydedilmez."
-
 msgid "Client number (default: the client of the latest measurement)"
 msgstr "Danışan numarası (varsayılan: son ölçümün danışanı)"
 
@@ -1209,3 +1203,223 @@ msgstr "tartim · açık kaynak yazılım (GPL-3.0-or-later)"
 
 msgid "Segmental distribution"
 msgstr "Segmental dağılım"
+
+msgid "(no client)"
+msgstr "(danışan yok)"
+
+msgid "Add a client"
+msgstr "Danışan ekle"
+
+msgid "Add…"
+msgstr "Ekle…"
+
+msgid "Also delete the client's measurements"
+msgstr "Danışanın ölçümlerini de sil"
+
+msgid "Assign"
+msgstr "Ata"
+
+msgid "Assign to a client"
+msgstr "Danışana ata"
+
+msgid "Assign…"
+msgstr "Danışana ata…"
+
+msgid "Birth date"
+msgstr "Doğum tarihi"
+
+msgid "Birth date, e.g. 1977-05-01 or 01.05.1977"
+msgstr "Doğum tarihi, ör. 01.05.1977 ya da 1977-05-01"
+
+msgid "Body type must be 0 (standard) or 2 (athletic)."
+msgstr "Vücut tipi 0 (standart) ya da 2 (atletik) olmalı."
+
+msgid "Born"
+msgstr "Doğum"
+
+msgid "Change a client's details"
+msgstr "Danışan bilgilerini değiştir"
+
+msgid "Change the client number (measurements follow)"
+msgstr "Danışan numarasını değiştir (ölçümleri de taşınır)"
+
+msgid "Check the details"
+msgstr "Bilgileri denetleyin"
+
+msgid "Client number {number} is already used."
+msgstr "{number} danışan numarası zaten kullanılıyor."
+
+msgid "Client number, as entered on the device"
+msgstr "Danışan numarası (cihaza girilen)"
+
+msgid "Client records (name, gender, birth date, height)"
+msgstr "Danışan kayıtları (ad, cinsiyet, doğum tarihi, boy)"
+
+msgid "Client records: name, gender, birth date and height"
+msgstr "Danışan kayıtları: ad, cinsiyet, doğum tarihi ve boy"
+
+msgid "Client saved:"
+msgstr "Danışan kaydedildi:"
+
+msgid "Client {number} deleted."
+msgstr "{number} numaralı danışan silindi."
+
+msgid "Clients"
+msgstr "Danışanlar"
+
+msgid "Delete a client record"
+msgstr "Danışan kaydını sil"
+
+msgid "Delete the record"
+msgstr "Kaydı sil"
+
+msgid "Delete with measurements"
+msgstr "Ölçümleriyle birlikte sil"
+
+msgid "Delete {name}?"
+msgstr "{name} silinsin mi?"
+
+msgid "Delete…"
+msgstr "Sil…"
+
+msgid "Edit client"
+msgstr "Danışanı düzenle"
+
+msgid "Edit…"
+msgstr "Düzenle…"
+
+msgid "Enter the client number on the device before measuring; measurements with that number are linked to the client. Gender, age and height missing from a measurement are taken from here."
+msgstr "Ölçümden önce cihaza danışan numarasını girin; bu numaralı ölçümler danışana bağlanır. Ölçümde eksik olan cinsiyet, yaş ve boy buradan alınır."
+
+msgid "First and last name"
+msgstr "Ad soyad"
+
+msgid "First choose a measurement in the list."
+msgstr "Önce listeden bir ölçüm seçin."
+
+msgid "Gender must be 1 (male) or 2 (female)."
+msgstr "Cinsiyet 1 (erkek) ya da 2 (kadın) olmalı."
+
+msgid "Height in cm"
+msgstr "Boy (cm)"
+
+msgid "Height must be between 50 and 250 cm."
+msgstr "Boy 50 ile 250 cm arasında olmalı."
+
+msgid "Invalid date: {text} (use e.g. 1977-05-01 or 01.05.1977)"
+msgstr "Geçersiz tarih: {text} (ör. 01.05.1977 ya da 1977-05-01 yazın)"
+
+msgid "Link a measurement to a client"
+msgstr "Bir ölçümü danışana bağla"
+
+msgid "Link the selected measurement to a client, e.g. when no client number was entered on the device"
+msgstr "Seçili ölçümü bir danışana bağlar; ör. cihaza danışan numarası girilmediyse"
+
+msgid "List clients"
+msgstr "Danışanları listele"
+
+msgid "Measurement {record} assigned to client {number}."
+msgstr "{record} numaralı ölçüm {number} numaralı danışana atandı."
+
+msgid "Measurement {record} belongs to:"
+msgstr "{record} numaralı ölçümün sahibi:"
+
+msgid "Measurement {record} is no longer linked to a client."
+msgstr "{record} numaralı ölçüm artık bir danışana bağlı değil."
+
+msgid "Name to print on the sheet (default: from the client record)"
+msgstr "Çıktıya yazılacak ad (varsayılan: danışan kaydından)"
+
+msgid "Name to print on the sheet. It comes from the client record; a name typed here is only printed, not saved."
+msgstr "Çıktıya yazılacak ad. Danışan kaydından gelir; buraya yazılan ad yalnızca çıktıda görünür, kaydedilmez."
+
+msgid "Names and birth dates are stored only in this computer's database."
+msgstr "Ad ve doğum tarihi yalnızca bu bilgisayardaki veritabanında saklanır."
+
+msgid "New client"
+msgstr "Yeni danışan"
+
+msgid "No client found."
+msgstr "Danışan bulunamadı."
+
+msgid "No client with number {number}."
+msgstr "{number} numaralı danışan yok."
+
+msgid "No client with number {number}. Add it first: tartim client add {number} --name \"...\""
+msgstr "{number} numaralı danışan yok. Önce ekleyin: tartim danisan ekle {number} --ad \"...\""
+
+msgid "Not sent by the device, taken from the client record: {names}."
+msgstr "Cihazın göndermediği, danışan kaydından alınan: {names}."
+
+msgid "Note"
+msgstr "Not"
+
+msgid "Number"
+msgstr "Numara"
+
+msgid "Part of a name or number"
+msgstr "Adın ya da numaranın bir kısmı"
+
+msgid "Record number"
+msgstr "Kayıt numarası"
+
+msgid "Remove the link"
+msgstr "Bağlantıyı kaldır"
+
+msgid "Search by name or number"
+msgstr "Ada ya da numaraya göre ara"
+
+msgid "The birth date cannot be in the future."
+msgstr "Doğum tarihi ileride olamaz."
+
+msgid "The client has no measurements."
+msgstr "Danışanın ölçümü yok."
+
+msgid "The client name is required."
+msgstr "Danışan adı gerekli."
+
+msgid "The client number is required."
+msgstr "Danışan numarası gerekli."
+
+msgid "There are no clients yet. Add them with the “Clients” button."
+msgstr "Henüz danışan yok. “Danışanlar” düğmesiyle ekleyin."
+
+msgid "age"
+msgstr "yaş"
+
+msgid "as entered on the device"
+msgstr "cihaza girilen"
+
+msgid "body type"
+msgstr "vücut tipi"
+
+msgid "e.g. 01.05.1977"
+msgstr "ör. 01.05.1977"
+
+msgid "gender"
+msgstr "cinsiyet"
+
+msgid "height"
+msgstr "boy"
+
+msgid "male or female"
+msgstr "erkek ya da kadın"
+
+msgid "standard or athletic"
+msgstr "standart ya da atletik"
+
+msgid "use male or female"
+msgstr "erkek ya da kadın yazın"
+
+msgid "use standard or athletic"
+msgstr "standart ya da atletik yazın"
+
+msgid "{n} measurement deleted."
+msgid_plural "{n} measurements deleted."
+msgstr[0] "{n} ölçüm silindi."
+msgstr[1] "{n} ölçüm silindi."
+
+msgid "The client has {n} measurement. Keep it without the name, or delete it too."
+msgid_plural "The client has {n} measurements. Keep them without the name, or delete them too."
+msgstr[0] "Danışanın {n} ölçümü var. Ölçümleri adsız olarak saklayabilir ya da onları da silebilirsiniz."
+msgstr[1] "Danışanın {n} ölçümü var. Ölçümleri adsız olarak saklayabilir ya da onları da silebilirsiniz."

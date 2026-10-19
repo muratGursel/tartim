@@ -13,6 +13,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+from .clients import Client, normalize_number
 from .fields import describe
 from .i18n import _
 from .protocol import Framer, Measurement, parse
@@ -31,7 +32,21 @@ CREATE TABLE IF NOT EXISTS measurements (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS measurements_raw ON measurements(raw);
 CREATE INDEX IF NOT EXISTS measurements_subject ON measurements(subject_id);
+CREATE TABLE IF NOT EXISTS clients (
+    number      TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    gender      INTEGER,
+    birth_date  TEXT,
+    height      REAL,
+    body_type   INTEGER NOT NULL DEFAULT 0,
+    note        TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
 """
+
+
+TURKISH_I = str.maketrans("İIı", "iii")
 
 
 def default_path() -> Path:
@@ -84,12 +99,75 @@ class Store:
         args: list[object] = []
         if subject_id is not None:
             sql += " WHERE subject_id = ?"
-            args.append(subject_id)
+            args.append(normalize_number(subject_id))
         sql += " ORDER BY id DESC"
         if limit:
             sql += " LIMIT ?"
             args.append(limit)
         return self._db.execute(sql, args).fetchall()
+
+    # --- Clients ---------------------------------------------------------------
+
+    def save_client(self, client: Client, replace_number: str | None = None) -> None:
+        """Adds or updates a client. ``replace_number`` renames an existing client;
+        its measurements follow the new number."""
+        now = datetime.now().isoformat(timespec="seconds")
+        row = client.to_row()
+        with self._db:
+            if replace_number is not None and replace_number != client.number:
+                if self.client(client.number):
+                    raise ValueError(_("Client number {number} is already used.").format(
+                        number=client.number))
+                self._db.execute("UPDATE clients SET number = ? WHERE number = ?",
+                                 (client.number, replace_number))
+                self._db.execute("UPDATE measurements SET subject_id = ? WHERE subject_id = ?",
+                                 (client.number, replace_number))
+            self._db.execute(
+                "INSERT INTO clients (number, name, gender, birth_date, height, body_type, note,"
+                " created_at, updated_at) VALUES (:number, :name, :gender, :birth_date, :height,"
+                " :body_type, :note, :now, :now) ON CONFLICT(number) DO UPDATE SET"
+                " name = excluded.name, gender = excluded.gender,"
+                " birth_date = excluded.birth_date, height = excluded.height,"
+                " body_type = excluded.body_type, note = excluded.note,"
+                " updated_at = excluded.updated_at", {**row, "now": now})
+
+    def client(self, number: str | None) -> Client | None:
+        if number is None:
+            return None
+        row = self._db.execute("SELECT * FROM clients WHERE number = ?",
+                               (normalize_number(number),)).fetchone()
+        return Client.from_row(row) if row else None
+
+    def clients(self, search: str = "") -> list[Client]:
+        # SQLite's LIKE only folds ASCII letters; Turkish names are matched here.
+        def fold(text: str) -> str:
+            return text.translate(TURKISH_I).casefold()
+
+        needle = fold(search.strip())
+        rows = self._db.execute("SELECT * FROM clients").fetchall()
+        found = [Client.from_row(r) for r in rows
+                 if needle in fold(r["name"]) or needle in fold(r["number"])]
+        return sorted(found, key=lambda c: fold(c.name))
+
+    def delete_client(self, number: str, with_measurements: bool = False) -> int:
+        """Deletes a client record; with ``with_measurements`` their measurements too.
+        Returns how many measurements were deleted."""
+        number = normalize_number(number)
+        with self._db:
+            deleted = 0
+            if with_measurements:
+                deleted = self._db.execute("DELETE FROM measurements WHERE subject_id = ?",
+                                           (number,)).rowcount
+            self._db.execute("DELETE FROM clients WHERE number = ?", (number,))
+        return deleted
+
+    def assign(self, record_id: int, number: str | None) -> None:
+        """Links a measurement to a client number (None: unlink)."""
+        with self._db:
+            cur = self._db.execute("UPDATE measurements SET subject_id = ? WHERE id = ?",
+                                   (normalize_number(number) if number else None, record_id))
+        if not cur.rowcount:
+            raise LookupError(_("No measurement with number {number}.").format(number=record_id))
 
     def get(self, record_id: int) -> sqlite3.Row | None:
         return self._db.execute("SELECT * FROM measurements WHERE id = ?",

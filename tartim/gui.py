@@ -139,7 +139,7 @@ def _bt_label(device) -> str:
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, app: Gtk.Application, store: Store, port: str | None = None):
         super().__init__(application=app, title="Tartım")
-        self.set_default_size(980, 620)
+        self.set_default_size(1120, 640)
         self.set_icon_name(APP_ID)
         self.store = store
         self.listener: Listener | BleListener | None = None
@@ -156,6 +156,10 @@ class MainWindow(Gtk.ApplicationWindow):
         help_button.set_tooltip_text(_("Open the user guide"))
         help_button.connect("clicked", lambda *args: self.open_uri(help_url()))
         header.pack_end(help_button)
+        clients_button = Gtk.Button(label=_("Clients"))
+        clients_button.set_tooltip_text(_("Client records: name, gender, birth date and height"))
+        clients_button.connect("clicked", self.on_clients)
+        header.pack_start(clients_button)
         self.set_titlebar(header)
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=12)
@@ -240,13 +244,13 @@ class MainWindow(Gtk.ApplicationWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin=12)
         frame.add(box)
 
-        # No, time, model, client, weight, raw record (hidden)
-        self.history_model = Gtk.ListStore(int, str, str, str, str, str)
+        # No, time, model, client number, name, weight, raw record (hidden)
+        self.history_model = Gtk.ListStore(int, str, str, str, str, str, str)
         self.history_view = Gtk.TreeView(model=self.history_model)
-        titles = (_("No"), _("Time"), _("Model"), _("Client"), _("Weight (kg)"))
+        titles = (_("No"), _("Time"), _("Model"), _("Client"), _("Name"), _("Weight (kg)"))
         for i, title in enumerate(titles):
             renderer = Gtk.CellRendererText()
-            if i in (0, 4):
+            if i in (0, 5):
                 renderer.set_property("xalign", 1.0)
             column = Gtk.TreeViewColumn(title, renderer, text=i)
             column.set_sort_column_id(i)
@@ -267,7 +271,12 @@ class MainWindow(Gtk.ApplicationWindow):
         self.print_button.set_tooltip_text(_("Create a printable result sheet of the selected "
                                              "measurement (or the latest one)"))
         self.print_button.connect("clicked", self.on_print)
+        self.assign_button = Gtk.Button(label=_("Assign…"))
+        self.assign_button.set_tooltip_text(_("Link the selected measurement to a client, e.g. "
+                                              "when no client number was entered on the device"))
+        self.assign_button.connect("clicked", self.on_assign)
         buttons.pack_start(sd, False, False, 0)
+        buttons.pack_start(self.assign_button, False, False, 0)
         buttons.pack_end(export, False, False, 0)
         buttons.pack_end(self.print_button, False, False, 0)
         box.pack_start(buttons, False, False, 0)
@@ -304,11 +313,13 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def refresh_history(self) -> None:
         self.history_model.clear()
+        names = {c.number: c.name for c in self.store.clients()}
         for row in self.store.list(limit=500):
             when = (row["measured_at"] or row["received_at"]).replace("T", " ")[:16]
             weight = f"{row['weight']:.1f}" if row["weight"] is not None else "-"
             self.history_model.append([row["id"], when, row["model"] or "-",
-                                       row["subject_id"] or "-", weight, row["raw"]])
+                                       row["subject_id"] or "-",
+                                       names.get(row["subject_id"], ""), weight, row["raw"]])
 
     def show_placeholder(self) -> None:
         self.headline.set_markup(
@@ -317,7 +328,7 @@ class MainWindow(Gtk.ApplicationWindow):
                      "appears here.")))
         self.detail_model.clear()
 
-    def show_measurement(self, m: Measurement, note: str = "") -> None:
+    def show_measurement(self, m: Measurement, note: str = "", subject: str | None = None) -> None:
         self.detail_model.clear()
         if not m.recognized:
             self.headline.set_markup(
@@ -327,7 +338,10 @@ class MainWindow(Gtk.ApplicationWindow):
             self.detail_model.append([_("Raw data"), m.raw[:200]])
             return
         weight = f"{m.weight:.1f} kg" if m.weight is not None else "-"
-        client = _("Client {number}").format(number=m.subject_id) if m.subject_id else ""
+        subject = subject or m.subject_id
+        record = self.store.client(subject)
+        client = record.name if record else (
+            _("Client {number}").format(number=subject) if subject else "")
         info = " · ".join(filter(None, [m.model, client, note]))
         self.headline.set_markup(f"<span size='xx-large' weight='bold'>{escape(weight)}</span>\n"
                                  f"{escape(info)}")
@@ -456,8 +470,10 @@ class MainWindow(Gtk.ApplicationWindow):
     def on_history_selected(self, selection: Gtk.TreeSelection) -> None:
         model, it = selection.get_selected()
         if it is not None:
-            self.show_measurement(parse(model[it][5]),
-                                  note=_("record {number}").format(number=model[it][0]))
+            subject = model[it][3]
+            self.show_measurement(parse(model[it][6]),
+                                  note=_("record {number}").format(number=model[it][0]),
+                                  subject=None if subject == "-" else subject)
 
     def _file_dialog(self, title: str, action: Gtk.FileChooserAction, button: str):
         return Gtk.FileChooserNative(title=title, transient_for=self, action=action,
@@ -497,7 +513,7 @@ class MainWindow(Gtk.ApplicationWindow):
         model, it = self.history_view.get_selection().get_selected()
         return model[it][0] if it is not None else None
 
-    def ask_client_name(self) -> str | None:
+    def ask_client_name(self, name: str = "") -> str | None:
         """Asks for the name to print on the sheet; None if cancelled. Not saved."""
         dialog = Gtk.Dialog(title=_("Result sheet"), transient_for=self, modal=True)
         dialog.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL,
@@ -509,10 +525,10 @@ class MainWindow(Gtk.ApplicationWindow):
         box.set_margin_end(16)
         box.set_margin_top(12)
         box.set_margin_bottom(12)
-        box.add(Gtk.Label(label=_("Client name to print on the sheet (optional). It is only "
-                                  "printed, not saved."), xalign=0, wrap=True,
-                          max_width_chars=50))
-        entry = Gtk.Entry(activates_default=True)
+        box.add(Gtk.Label(label=_("Name to print on the sheet. It comes from the client record; "
+                                  "a name typed here is only printed, not saved."),
+                          xalign=0, wrap=True, max_width_chars=50))
+        entry = Gtk.Entry(activates_default=True, text=name)
         box.add(entry)
         dialog.show_all()
         response = dialog.run()
@@ -528,7 +544,7 @@ class MainWindow(Gtk.ApplicationWindow):
         except LookupError as exc:
             self.show_message(Gtk.MessageType.INFO, _("Result sheet"), str(exc))
             return
-        name = self.ask_client_name()
+        name = self.ask_client_name(current.client.name if current.client else "")
         if name is None:
             return
         dialog = self._file_dialog(_("Save the result sheet"), Gtk.FileChooserAction.SAVE,
@@ -548,6 +564,49 @@ class MainWindow(Gtk.ApplicationWindow):
             else:
                 self.set_status(_("Result sheet written: {path}").format(path=path))
                 self.open_uri(path.resolve().as_uri())
+        dialog.destroy()
+
+    def on_clients(self, *args):
+        dialog = ClientsDialog(self)
+        dialog.run()
+        dialog.destroy()
+        self.refresh_history()
+
+    def on_assign(self, *args):
+        record = self.selected_record()
+        if record is None:
+            self.show_message(Gtk.MessageType.INFO, _("Assign to a client"),
+                              _("First choose a measurement in the list."))
+            return
+        clients = self.store.clients()
+        if not clients:
+            self.show_message(Gtk.MessageType.INFO, _("Assign to a client"),
+                              _("There are no clients yet. Add them with the “Clients” button."))
+            return
+        dialog = Gtk.Dialog(title=_("Assign to a client"), transient_for=self, modal=True)
+        dialog.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL,
+                           _("Assign"), Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        box = _dialog_box(dialog)
+        box.add(Gtk.Label(label=_("Measurement {record} belongs to:").format(record=record),
+                          xalign=0))
+        combo = Gtk.ComboBoxText()
+        combo.append("", _("(no client)"))
+        for c in clients:
+            combo.append(c.number, f"{c.name} ({c.number})")
+        row = self.store.get(record)
+        combo.set_active_id(row["subject_id"] or "")
+        if combo.get_active() < 0:
+            combo.set_active(0)
+        box.add(combo)
+        dialog.show_all()
+        if dialog.run() == Gtk.ResponseType.OK:
+            number = combo.get_active_id() or None
+            self.store.assign(record, number)
+            self.refresh_history()
+            self.set_status(_("Measurement {record} assigned to client {number}.").format(
+                record=record, number=number) if number else
+                _("Measurement {record} is no longer linked to a client.").format(record=record))
         dialog.destroy()
 
     def on_export(self, *args):
@@ -580,6 +639,177 @@ class MainWindow(Gtk.ApplicationWindow):
             self.start_listening()
         else:
             self.set_status(_not_connected())
+
+
+def _dialog_box(dialog: Gtk.Dialog) -> Gtk.Box:
+    box = dialog.get_content_area()
+    box.set_spacing(8)
+    for side in ("start", "end", "top", "bottom"):
+        getattr(box, f"set_margin_{side}")(14)
+    return box
+
+
+class ClientsDialog(Gtk.Dialog):
+    """The client list: add, change and delete client records."""
+
+    def __init__(self, parent: MainWindow):
+        super().__init__(title=_("Clients"), transient_for=parent, modal=True)
+        self.set_default_size(720, 420)
+        self.parent_window, self.store = parent, parent.store
+        self.add_button(_("Close"), Gtk.ResponseType.CLOSE)
+        box = _dialog_box(self)
+        box.add(Gtk.Label(label=_(
+            "Enter the client number on the device before measuring; measurements with that "
+            "number are linked to the client. Gender, age and height missing from a "
+            "measurement are taken from here."), xalign=0, wrap=True, max_width_chars=80))
+
+        self.search = Gtk.SearchEntry(placeholder_text=_("Search by name or number"))
+        self.search.connect("search-changed", lambda *args: self.refresh())
+        box.add(self.search)
+
+        # Number, name, gender, birth date, age, height, note
+        self.model = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.view = Gtk.TreeView(model=self.model)
+        for i, title in enumerate((_("Number"), _("Name"), _("Gender"), _("Born"), _("Age"),
+                                   _("Height"), _("Note"))):
+            renderer = Gtk.CellRendererText()
+            if i in (0, 4, 5):
+                renderer.set_property("xalign", 1.0)
+            column = Gtk.TreeViewColumn(title, renderer, text=i)
+            column.set_sort_column_id(i)
+            column.set_expand(i == 6)
+            self.view.append_column(column)
+        self.view.connect("row-activated", lambda *args: self.on_edit())
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        scroll.add(self.view)
+        box.pack_start(scroll, True, True, 0)
+
+        buttons = Gtk.Box(spacing=8)
+        for label, handler in ((_("Add…"), self.on_add), (_("Edit…"), self.on_edit),
+                               (_("Delete…"), self.on_delete)):
+            button = Gtk.Button(label=label)
+            button.connect("clicked", lambda *args, h=handler: h())
+            buttons.pack_start(button, False, False, 0)
+        box.add(buttons)
+        self.refresh()
+        self.show_all()
+
+    def refresh(self) -> None:
+        self.model.clear()
+        for c in self.store.clients(self.search.get_text()):
+            age = c.age_at()
+            self.model.append([
+                c.number, c.name, describe("GE").display(c.gender) if c.gender else "",
+                f"{c.birth_date:%d.%m.%Y}" if c.birth_date else "",
+                "" if age is None else str(age), f"{c.height:g}" if c.height else "", c.note])
+
+    def selected(self):
+        model, it = self.view.get_selection().get_selected()
+        return self.store.client(model[it][0]) if it is not None else None
+
+    def on_add(self) -> None:
+        self.edit(None)
+
+    def on_edit(self) -> None:
+        client = self.selected()
+        if client is not None:
+            self.edit(client)
+
+    def edit(self, client) -> None:
+        form = ClientForm(self, client)
+        while form.run() == Gtk.ResponseType.OK:
+            try:
+                new = form.client()
+                if client is None and self.store.client(new.number):
+                    raise ValueError(_("Client number {number} is already used.").format(
+                        number=new.number))
+                self.store.save_client(new, replace_number=client.number if client else None)
+            except ValueError as exc:
+                self.parent_window.show_message(Gtk.MessageType.WARNING,
+                                                _("Check the details"), str(exc))
+                continue
+            break
+        form.destroy()
+        self.refresh()
+
+    def on_delete(self) -> None:
+        client = self.selected()
+        if client is None:
+            return
+        count = len(self.store.list(subject_id=client.number))
+        dialog = Gtk.MessageDialog(transient_for=self, modal=True,
+                                   message_type=Gtk.MessageType.QUESTION,
+                                   buttons=Gtk.ButtonsType.NONE,
+                                   text=_("Delete {name}?").format(name=client.name))
+        dialog.format_secondary_text(ngettext(
+            "The client has {n} measurement. Keep it without the name, or delete it too.",
+            "The client has {n} measurements. Keep them without the name, or delete them too.",
+            count).format(n=count) if count else _("The client has no measurements."))
+        dialog.add_button(_("Cancel"), Gtk.ResponseType.CANCEL)
+        if count:
+            dialog.add_button(_("Delete with measurements"), 2)
+        dialog.add_button(_("Delete the record"), Gtk.ResponseType.OK)
+        response = dialog.run()
+        dialog.destroy()
+        if response in (Gtk.ResponseType.OK, 2):
+            self.store.delete_client(client.number, with_measurements=response == 2)
+            self.refresh()
+
+
+class ClientForm(Gtk.Dialog):
+    def __init__(self, parent: Gtk.Window, client=None):
+        super().__init__(title=_("Edit client") if client else _("New client"),
+                         transient_for=parent, modal=True)
+        self.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Save"), Gtk.ResponseType.OK)
+        self.set_default_response(Gtk.ResponseType.OK)
+        grid = Gtk.Grid(row_spacing=8, column_spacing=12)
+        _dialog_box(self).add(grid)
+
+        def entry(text="", placeholder=""):
+            return Gtk.Entry(text=text, placeholder_text=placeholder, activates_default=True)
+
+        self.number = entry(client.number if client else "", _("as entered on the device"))
+        self.name_entry = entry(client.name if client else "")
+        self.gender = Gtk.ComboBoxText()
+        self.gender.append("", "–")
+        for value in (1, 2):
+            self.gender.append(str(value), describe("GE").display(value))
+        self.gender.set_active_id(str(client.gender) if client and client.gender else "")
+        self.birth = entry(f"{client.birth_date:%d.%m.%Y}" if client and client.birth_date
+                           else "", _("e.g. 01.05.1977"))
+        self.height = entry(f"{client.height:g}" if client and client.height else "", "cm")
+        self.body_type = Gtk.ComboBoxText()
+        for value in (0, 2):
+            self.body_type.append(str(value), describe("Bt").display(value))
+        self.body_type.set_active_id(str(client.body_type) if client else "0")
+        self.note = entry(client.note if client else "")
+        rows = ((_("Client number"), self.number), (_("Name"), self.name_entry),
+                (_("Gender"), self.gender), (_("Birth date"), self.birth),
+                (_("Height (cm)"), self.height), (_("Body type"), self.body_type),
+                (_("Note"), self.note))
+        for i, (label, widget) in enumerate(rows):
+            grid.attach(Gtk.Label(label=label, xalign=0), 0, i, 1, 1)
+            widget.set_hexpand(True)
+            grid.attach(widget, 1, i, 1, 1)
+        grid.attach(Gtk.Label(label=_("Names and birth dates are stored only in this "
+                                      "computer's database."), xalign=0, wrap=True,
+                              max_width_chars=50), 0, len(rows), 2, 1)
+        self.show_all()
+
+    def client(self):
+        from .clients import Client, parse_date  # noqa: PLC0415
+
+        height = self.height.get_text().strip().replace(",", ".")
+        try:
+            height_value = float(height) if height else None
+        except ValueError:
+            raise ValueError(_("Height must be between 50 and 250 cm.")) from None
+        birth = self.birth.get_text().strip()
+        gender = self.gender.get_active_id()
+        return Client(self.number.get_text(), self.name_entry.get_text(),
+                      int(gender) if gender else None, parse_date(birth) if birth else None,
+                      height_value, int(self.body_type.get_active_id() or 0),
+                      self.note.get_text().strip())
 
 
 class ReportDialog(Gtk.Dialog):

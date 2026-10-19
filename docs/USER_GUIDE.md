@@ -16,10 +16,11 @@ and how to send a device report to the developers. No computer skills needed.
 3. [Connecting the scale with a cable](#3-connecting-the-scale-with-a-cable)
 4. [Connecting the scale over Bluetooth](#4-connecting-the-scale-over-bluetooth)
 5. [Taking measurements](#5-taking-measurements)
-6. [Saved measurements, SD card, Excel and the result sheet](#6-saved-measurements-sd-card-excel-and-the-result-sheet)
-7. [Preparing and sending a device report](#7-preparing-and-sending-a-device-report)
-8. [Troubleshooting](#8-troubleshooting)
-9. [Protecting personal data](#9-protecting-personal-data)
+6. [Client records](#6-client-records)
+7. [Saved measurements, SD card, Excel and the result sheet](#7-saved-measurements-sd-card-excel-and-the-result-sheet)
+8. [Preparing and sending a device report](#8-preparing-and-sending-a-device-report)
+9. [Troubleshooting](#9-troubleshooting)
+10. [Protecting personal data](#10-protecting-personal-data)
 
 ---
 
@@ -60,7 +61,8 @@ In the window:
 
 - **Top:** port selection, refresh and Bluetooth buttons, speed and **Connect**
 - **Left:** the results of the last measurement
-- **Right:** saved measurements, **Import from SD card** and **Export for Excel**
+- **Right:** saved measurements, **Import from SD card**, **Assign**, **Result sheet (PDF)** and **Export for Excel**
+- **Top left:** **Clients** (see [Client records](#6-client-records))
 - **Top right:** **Help** (this guide) and **Device report**
 
 ---
@@ -73,7 +75,7 @@ In the window:
 3. Choose the scale in the **Port** list. Devices connected over USB usually
    appear as `/dev/ttyUSB0` or `/dev/ttyACM0` at the top of the list.
 4. Leave **Speed** at 9600. Only change it if no data arrives (see
-   [Troubleshooting](#8-troubleshooting)).
+   [Troubleshooting](#9-troubleshooting)).
 5. Press **Connect**. The button turns into a red **Disconnect** and the line
    below says "Listening on".
 
@@ -105,7 +107,7 @@ Next to each device the list shows one of three types:
 |---|---|---|
 | **BLE (standard scale)** | The device uses the standard Bluetooth scale service. | Press **Connect**. Measurements arrive live. |
 | **Classic (serial port)** | The device uses older Bluetooth that works like a cable. | Pair it first (4.2), then press **Connect**. |
-| **BLE** | The device uses a vendor-specific method. | It cannot be read directly yet. Please send a **device report** (section 7); with it we can add support. |
+| **BLE** | The device uses a vendor-specific method. | It cannot be read directly yet. Please send a **device report** (section 8); with it we can add support. |
 
 ### 4.2 Pairing a classic Bluetooth device
 
@@ -130,8 +132,9 @@ You do this once per device.
 ## 5. Taking measurements
 
 1. While connected (the line below says "Listening on" or "connected"), measure
-   on the device as usual: enter the client's details on the device and let the
-   client step on.
+   on the device as usual: enter the client number and details on the device
+   and let the client step on. The number links the measurement to the
+   client's record (see [Client records](#6-client-records)).
 2. When the measurement ends, the result appears on the left of Tartım within a
    few seconds and is saved automatically. You do not need to do anything else.
 
@@ -145,7 +148,63 @@ You do this once per device.
 
 ---
 
-## 6. Saved measurements, SD card, Excel and the result sheet
+## 6. Client records
+
+Once you record your clients, measurements are listed with their names and you
+no longer need to type the name for the result sheet.
+
+**Adding a client:**
+
+1. Press **Clients** at the top left.
+
+   ![The Clients window (made-up people)](screenshots/en/13-clients.png)
+
+2. Press **Add…** and fill in the details:
+
+   ![Client details](screenshots/en/14-client-form.png)
+
+   - **Client number:** the number (ID) you enter on the device before measuring.
+     Required.
+   - **Name:** required.
+   - **Gender, birth date, height, body type:** optional. Type the birth date as
+     `01.05.1977`; the age is calculated for the date of each measurement.
+   - **Note:** an optional short note.
+3. Press **Save**.
+
+**How are measurements linked to a client?** Enter the client number on the
+device before measuring. The device sends the number with the measurement and
+Tartım links the measurement to that client; the name appears in the **Name**
+column of the saved measurements. Measurements saved earlier show the name as
+soon as the client is added.
+
+**Measurements without a number** (e.g. from Bluetooth scales that do not ask
+for a client number, or when no number was entered): select the measurement in
+the list, press **Assign…** and choose the client. Choose **(no client)** in the
+same window to remove the link.
+
+**Filling in missing details:** if the device does not send the gender, age or
+height (some Bluetooth scales only send the weight), the assessments on the
+result sheet take them from the client record, and the sheet says so. Values
+sent by the device always take precedence. The body composition (fat, muscle,
+water) is still calculated by the device; Tartım does not recalculate it.
+
+**Editing and deleting:** select the client and press **Edit…** or **Delete…**.
+If you change the client number, the client's measurements move to the new
+number. When deleting, you can keep the measurements without the name or delete
+them too.
+
+From the command line:
+
+```
+tartim client add 42 --name "First Last" --gender female --birth 01.05.1980 --height 165
+tartim client list
+tartim client edit 42 --note "Weekly check"
+tartim assign --record 12 --client 42
+```
+
+---
+
+## 7. Saved measurements, SD card, Excel and the result sheet
 
 **A saved measurement:** click a row in the list on the right; its details
 appear on the left. Click the column headers to sort.
@@ -168,8 +227,8 @@ appear on the left. Click the column headers to sort.
 1. Select the measurement in the list on the right (without a selection the
    latest measurement is used).
 2. Press **Result sheet (PDF)…**.
-3. Optionally type the client's name. It is only printed on the sheet and never
-   saved. Press **Create PDF**.
+3. For a recorded client the name is filled in. Otherwise you can type it
+   here; it is only printed on the sheet, not saved. Press **Create PDF**.
 4. Give the file a name and press **Save**. The PDF opens; print it from there.
 
 The first page analyses the measurement: body composition, segmental muscle and
@@ -192,7 +251,7 @@ or `tartim print --record 12`.
 
 ---
 
-## 7. Preparing and sending a device report
+## 8. Preparing and sending a device report
 
 A device report teaches us how your scale sends its data to the computer. It is
 especially helpful when:
@@ -309,7 +368,7 @@ tartim send-report tartim-report-MC780MA-20261016-104512.json
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Problem | Solution |
 |---|---|
@@ -320,21 +379,22 @@ tartim send-report tartim-report-MC780MA-20261016-104512.json
 | "Bluetooth is off" | Turn Bluetooth on in the system menu. |
 | "No Bluetooth adapter found" | The computer has no Bluetooth or it is disabled. You can plug in a USB Bluetooth adapter. |
 | Could not connect over Bluetooth | The scale may be connected to a phone; switch Bluetooth off on that device. Pair classic devices first (4.2). |
-| "This device does not use the standard Bluetooth scale service" | The device uses a vendor-specific method. Send a device report (7). |
+| "This device does not use the standard Bluetooth scale service" | The device uses a vendor-specific method. Send a device report (8). |
 
 If your problem is not solved, write to us at
 <https://github.com/muratGursel/tartim/issues>.
 
 ---
 
-## 9. Protecting personal data
+## 10. Protecting personal data
 
 Body measurements are health data, a special category of personal data under
 KVKK and the GDPR.
 
 - Measurements are stored only on your computer, in a file that only your user
   account can read (`~/.local/share/tartim/tartim.db`). Measurements are never
-  sent to the internet.
+  sent to the internet. Client records (name, birth date, height, note) are
+  kept in the same file and are never sent either.
 - The only thing that goes to the internet is a **device report** that you choose
   and confirm. Reports sent to the project server are kept in a private
   repository that only the developers can access; reports sent with the GitHub

@@ -93,6 +93,34 @@ class MainWindowTests(unittest.TestCase):
         out = Path(self.tmp.name) / "o.csv"
         self.assertEqual(self.store.export_csv(out), 1)
 
+    def test_clients(self):
+        from tartim.clients import Client
+        from tartim.gui import ClientForm, ClientsDialog
+
+        self.window.on_record(SAMPLE)
+        self.store.save_client(Client("42", "Örnek Kişi", gender=2, height=165))
+        self.window.refresh_history()
+        self.assertEqual(self.window.history_model[0][4], "Örnek Kişi")
+        self.window.show_measurement(self.store.measurements()[0])
+        self.assertIn("Örnek Kişi", self.window.headline.get_label())
+
+        dialog = ClientsDialog(self.window)
+        self.assertEqual([row[1] for row in dialog.model], ["Örnek Kişi"])
+        dialog.search.set_text("yok")
+        dialog.refresh()
+        self.assertEqual(len(dialog.model), 0)
+        dialog.destroy()
+
+        form = ClientForm(self.window, self.store.client("42"))
+        form.birth.set_text("01.05.1980")
+        form.height.set_text("165,5")
+        client = form.client()
+        self.assertEqual((client.height, client.birth_date.year, client.gender), (165.5, 1980, 2))
+        form.height.set_text("abc")
+        with self.assertRaises(ValueError):
+            form.client()
+        form.destroy()
+
 
 @unittest.skipUnless(HAVE_DISPLAY, "GTK 3 and a display are required")
 class ReportDoneTests(unittest.TestCase):

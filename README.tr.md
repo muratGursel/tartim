@@ -57,7 +57,10 @@ Adım adım anlatım için: **[Kullanım kılavuzu](docs/KULLANIM.md)**
 3. Geçmiş ölçümler sağda listelenir. **SD karttan içe aktar** ve **Excel için
    dışa aktar** düğmeleri buradadır. **Sonuç çıktısı (PDF)** danışanın gelişimini
    de gösteren iki sayfalık, yazdırılabilir bir sonuç sayfası hazırlar.
-4. **Cihaz raporu** düğmesi, geliştiricilere gönderilecek raporu birkaç adımda
+4. **Danışanlar** düğmesiyle danışanları (ad, cinsiyet, doğum tarihi, boy)
+   kaydedin. Cihaza girilen danışan numarası ölçümü danışana bağlar; cihazın
+   göndermediği yaş, boy ve cinsiyet sonuç çıktısında kayıttan alınır.
+5. **Cihaz raporu** düğmesi, geliştiricilere gönderilecek raporu birkaç adımda
    hazırlar.
 
 ## Bluetooth
@@ -84,13 +87,16 @@ tartim ice-aktar /media/$USER/SD/*.CSV # SD karttan içe aktar
 tartim listele --son 10
 tartim disa-aktar --cikti olcumler.csv # Excel / LibreOffice için
 tartim ham --port /dev/ttyUSB0         # yeni cihaz için ham veri
-tartim yazdir --ad "Ad Soyad"          # yazdırılabilir sonuç çıktısı (PDF)
+tartim yazdir --danisan 42             # yazdırılabilir sonuç çıktısı (PDF)
+tartim danisan ekle 42 --ad "Ad Soyad" --cinsiyet kadin --dogum 01.05.1980 --boy 165
+tartim danisan listele
+tartim ata --kayit 12 --danisan 42     # numarasız ölçümü danışana bağla
 ```
 
 Port ayarları: `--baud 9600 --parite N --veri-biti 8 --dur-biti 1` (varsayılan).
 
-Ölçümler `~/.local/share/tartim/tartim.db` dosyasında saklanır. Dosya yalnızca
-sizin okuyabileceğiniz izinlerle oluşturulur.
+Ölçümler ve danışan kayıtları `~/.local/share/tartim/tartim.db` dosyasında
+saklanır. Dosya yalnızca sizin okuyabileceğiniz izinlerle oluşturulur.
 
 ## Tartınız mı var? Cihaz raporu gönderin
 
@@ -171,7 +177,7 @@ hata bildirimlerine ya da bu depoya eklemeyin.
 - [ ] `CS` sağlama değerini doğrulamak
 - [ ] Uzak kip: boy, yaş ve cinsiyetin bilgisayardan cihaza gönderilmesi
 - [x] Masaüstü arayüzü (GTK)
-- [ ] Danışan kaydı ve gelişim grafikleri
+- [x] Danışan kaydı ve gelişim grafikleri
 - [x] Bluetooth: standart BLE tartılar, klasik seri port, keşif raporu
 - [ ] Tartı FAST protokolü (cihaz raporu bekleniyor)
 - [x] Gelişim grafikli, yazdırılabilir sonuç çıktısı (PDF)

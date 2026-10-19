@@ -16,10 +16,11 @@ adım anlatır. Bilgisayar bilgisi gerektirmez.
 3. [Tartıyı kabloyla bağlamak](#3-tartıyı-kabloyla-bağlamak)
 4. [Tartıyı Bluetooth ile bağlamak](#4-tartıyı-bluetooth-ile-bağlamak)
 5. [Ölçüm almak](#5-ölçüm-almak)
-6. [Geçmiş ölçümler, SD kart, Excel ve sonuç çıktısı](#6-geçmiş-ölçümler-sd-kart-excel-ve-sonuç-çıktısı)
-7. [Cihaz raporu hazırlamak ve göndermek](#7-cihaz-raporu-hazırlamak-ve-göndermek)
-8. [Sorun giderme](#8-sorun-giderme)
-9. [Kişisel verilerin korunması](#9-kişisel-verilerin-korunması)
+6. [Danışan kaydı](#6-danışan-kaydı)
+7. [Geçmiş ölçümler, SD kart, Excel ve sonuç çıktısı](#7-geçmiş-ölçümler-sd-kart-excel-ve-sonuç-çıktısı)
+8. [Cihaz raporu hazırlamak ve göndermek](#8-cihaz-raporu-hazırlamak-ve-göndermek)
+9. [Sorun giderme](#9-sorun-giderme)
+10. [Kişisel verilerin korunması](#10-kişisel-verilerin-korunması)
 
 ---
 
@@ -56,7 +57,8 @@ Açılan pencerede:
 
 - **Üstte:** port seçimi, yenile ve Bluetooth düğmeleri, hız ve **Bağlan**
 - **Solda:** son ölçümün sonuçları
-- **Sağda:** kayıtlı ölçümler, **SD karttan içe aktar** ve **Excel için dışa aktar**
+- **Sağda:** kayıtlı ölçümler, **SD karttan içe aktar**, **Danışana ata**, **Sonuç çıktısı (PDF)** ve **Excel için dışa aktar**
+- **Sol üstte:** **Danışanlar** (bkz. [Danışan kaydı](#6-danışan-kaydı))
 - **Sağ üstte:** **Yardım** (bu kılavuz) ve **Cihaz raporu**
 
 ---
@@ -69,7 +71,7 @@ Açılan pencerede:
 3. **Port** listesinden tartıyı seçin. USB ile bağlanan cihazlar genellikle
    `/dev/ttyUSB0` ya da `/dev/ttyACM0` adıyla görünür ve listenin başında yer alır.
 4. **Hız** alanını değiştirmeyin (9600). Yalnızca veri gelmezse değiştirin
-   (bkz. [Sorun giderme](#8-sorun-giderme)).
+   (bkz. [Sorun giderme](#9-sorun-giderme)).
 5. **Bağlan**'a basın. Düğme kırmızı **Bağlantıyı kes**'e dönüşür ve alt satırda
    "dinleniyor" yazar.
 
@@ -101,7 +103,7 @@ Listede cihazın yanında üç türden biri yazar:
 |---|---|---|
 | **BLE (standart tartı)** | Cihaz, Bluetooth'un standart tartı servisini kullanıyor. | Doğrudan **Bağlan**'a basın. Ölçümler canlı gelir. |
 | **Klasik (seri port)** | Cihaz kablo gibi çalışan eski tip Bluetooth kullanıyor. | Önce eşleştirin (4.2), sonra **Bağlan**'a basın. |
-| **BLE** | Cihaz üreticiye özel bir yöntem kullanıyor. | Henüz doğrudan okunamıyor. Lütfen bir **cihaz raporu** gönderin (bölüm 7); desteği bu raporla ekleyebiliriz. |
+| **BLE** | Cihaz üreticiye özel bir yöntem kullanıyor. | Henüz doğrudan okunamıyor. Lütfen bir **cihaz raporu** gönderin (bölüm 8); desteği bu raporla ekleyebiliriz. |
 
 ### 4.2 Klasik Bluetooth cihazı eşleştirmek
 
@@ -126,8 +128,9 @@ Bu işlem her cihaz için bir kez yapılır.
 ## 5. Ölçüm almak
 
 1. Tartıya bağlıyken (alt satırda "dinleniyor" ya da "bağlandı" yazarken)
-   ölçümü cihazda her zamanki gibi yapın: danışan bilgilerini cihaza girin,
-   danışan tartıya çıksın.
+   ölçümü cihazda her zamanki gibi yapın: danışan numarasını ve bilgilerini
+   cihaza girin, danışan tartıya çıksın. Numara, ölçümü danışanın kaydına
+   bağlar (bkz. [Danışan kaydı](#6-danışan-kaydı)).
 2. Ölçüm bitince sonuç birkaç saniye içinde Tartım'ın sol tarafında görünür ve
    otomatik olarak kaydedilir. Ayrıca bir şey yapmanız gerekmez.
 
@@ -141,7 +144,62 @@ Bu işlem her cihaz için bir kez yapılır.
 
 ---
 
-## 6. Geçmiş ölçümler, SD kart, Excel ve sonuç çıktısı
+## 6. Danışan kaydı
+
+Danışanlarınızı bir kez kaydederseniz ölçümleri adlarıyla görür, sonuç
+çıktısına adı ayrıca yazmanız gerekmez.
+
+**Danışan eklemek:**
+
+1. Sol üstteki **Danışanlar** düğmesine basın.
+
+   ![Danışanlar penceresi (örnek kişiler)](screenshots/tr/13-clients.png)
+
+2. **Ekle…**'ye basın ve bilgileri doldurun:
+
+   ![Danışan bilgileri](screenshots/tr/14-client-form.png)
+
+   - **Danışan numarası:** ölçümden önce cihaza girdiğiniz numara (ID). Zorunlu.
+   - **Adı soyadı:** zorunlu.
+   - **Cinsiyet, doğum tarihi, boy, vücut tipi:** isteğe bağlı. Doğum tarihini
+     `01.05.1977` biçiminde yazın; yaş her ölçümün tarihine göre hesaplanır.
+   - **Not:** isteğe bağlı kısa bir not.
+3. **Kaydet**'e basın.
+
+**Ölçümler danışana nasıl bağlanır?** Ölçümden önce cihaza danışan numarasını
+girin. Cihaz bu numarayı ölçümle birlikte gönderir ve Tartım ölçümü o danışana
+bağlar; kayıtlı ölçümler listesinde **Adı soyadı** sütununda adı görünür. Daha
+önce kaydedilmiş ölçümler de danışanı ekler eklemez adlarıyla görünür.
+
+**Numarasız ölçümler** (ör. danışan numarası sormayan Bluetooth tartılar ya da
+numara girilmeden yapılan ölçümler): listede ölçümü seçin, **Danışana ata…**'ya
+basın ve danışanı seçin. Aynı pencerede **(danışan yok)** seçerek bağlantıyı
+kaldırabilirsiniz.
+
+**Eksik bilgilerin tamamlanması:** Cihaz cinsiyet, yaş ya da boy göndermezse
+(bazı Bluetooth tartılar yalnızca kiloyu gönderir) sonuç çıktısındaki
+değerlendirmeler için bu bilgiler danışan kaydından alınır; çıktıda bu durum
+ayrıca belirtilir. Cihazın gönderdiği değerler her zaman önceliklidir. Vücut
+kompozisyonunu (yağ, kas, sıvı) yine cihaz hesaplar; Tartım bu değerleri
+yeniden hesaplamaz.
+
+**Düzenlemek ve silmek:** listede danışanı seçip **Düzenle…** ya da **Sil…**'e
+basın. Danışan numarasını değiştirirseniz ölçümleri de yeni numaraya taşınır.
+Silerken ölçümleri adsız olarak saklamayı ya da onlarla birlikte silmeyi
+seçebilirsiniz.
+
+Komut satırından:
+
+```
+tartim danisan ekle 42 --ad "Ad Soyad" --cinsiyet kadin --dogum 01.05.1980 --boy 165
+tartim danisan listele
+tartim danisan duzenle 42 --not "Haftalık takip"
+tartim ata --kayit 12 --danisan 42
+```
+
+---
+
+## 7. Geçmiş ölçümler, SD kart, Excel ve sonuç çıktısı
 
 **Geçmiş ölçüm:** Sağdaki listede bir satıra tıklayın; ayrıntıları solda görünür.
 Sütun başlıklarına tıklayarak sıralayabilirsiniz.
@@ -164,8 +222,9 @@ Sütun başlıklarına tıklayarak sıralayabilirsiniz.
 
 1. Sağdaki listede ölçümü seçin (seçmezseniz son ölçüm kullanılır).
 2. **Sonuç çıktısı (PDF)…** düğmesine basın.
-3. İsterseniz danışanın adını yazın. Ad yalnızca çıktıya yazılır, hiçbir yere
-   kaydedilmez. **PDF oluştur**'a basın.
+3. Danışan kayıtlıysa adı kendiliğinden gelir. Kayıtlı değilse adı burada
+   yazabilirsiniz; bu ad yalnızca çıktıya yazılır, kaydedilmez. **PDF
+   oluştur**'a basın.
 4. Dosyaya bir ad verip **Kaydet**'e basın. PDF açılır; oradan yazdırabilirsiniz.
 
 Çıktının ilk sayfasında ölçümün analizi bulunur: vücut kompozisyonu, segmental
@@ -188,7 +247,7 @@ Komut satırından: `tartim yazdir --ad "Ad Soyad"` (son ölçüm) ya da
 
 ---
 
-## 7. Cihaz raporu hazırlamak ve göndermek
+## 8. Cihaz raporu hazırlamak ve göndermek
 
 Cihaz raporu, tartınızın bilgisayara veriyi nasıl gönderdiğini öğrenmemizi
 sağlar. Özellikle şu durumlarda çok işimize yarar:
@@ -306,7 +365,7 @@ tartim rapor-gonder tartim-report-MC780MA-20261016-104512.json
 
 ---
 
-## 8. Sorun giderme
+## 9. Sorun giderme
 
 | Sorun | Çözüm |
 |---|---|
@@ -317,21 +376,22 @@ tartim rapor-gonder tartim-report-MC780MA-20261016-104512.json
 | "Bluetooth kapalı" | Sistem menüsünden Bluetooth'u açın. |
 | "Bluetooth adaptörü bulunamadı" | Bilgisayarınızda Bluetooth yok ya da kapalı. Harici bir USB Bluetooth adaptörü takabilirsiniz. |
 | Bluetooth'a bağlanılamadı | Tartı başka bir telefona bağlı olabilir; o cihazda Bluetooth'u kapatın. Klasik cihazlarda önce eşleştirme yapın (4.2). |
-| "Bu cihaz standart Bluetooth tartı servisini kullanmıyor" | Cihaz üreticiye özel yöntem kullanıyor. Cihaz raporu gönderin (7). |
+| "Bu cihaz standart Bluetooth tartı servisini kullanmıyor" | Cihaz üreticiye özel yöntem kullanıyor. Cihaz raporu gönderin (8). |
 
 Sorununuz çözülmezse <https://github.com/muratGursel/tartim/issues> adresinden
 bize yazabilirsiniz.
 
 ---
 
-## 9. Kişisel verilerin korunması
+## 10. Kişisel verilerin korunması
 
 Vücut ölçümleri sağlık verisidir ve KVKK kapsamında özel nitelikli kişisel veri
 sayılır.
 
 - Ölçümler yalnızca sizin bilgisayarınızda, yalnızca sizin kullanıcı hesabınızın
   okuyabileceği bir dosyada saklanır (`~/.local/share/tartim/tartim.db`).
-  Ölçümler hiçbir zaman internete gönderilmez.
+  Danışan kayıtları (ad, doğum tarihi, boy, not) da aynı dosyadadır.
+  Ölçümler ve danışan bilgileri hiçbir zaman internete gönderilmez.
 - İnternete giden tek şey, sizin seçip onayladığınız **cihaz raporlarıdır**.
   Proje sunucusuna gönderilen raporlar yalnızca geliştiricilerin erişebildiği
   özel bir depoda tutulur; GitHub formuyla gönderilenler herkese açıktır.

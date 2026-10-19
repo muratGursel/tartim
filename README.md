@@ -59,7 +59,10 @@ Step-by-step instructions: **[User guide](docs/USER_GUIDE.md)**
    **Export for Excel**.
    **Result sheet (PDF)** creates a printable two-page result sheet with the
    client's progress.
-4. **Device report** prepares a report for the developers in a few steps.
+4. **Clients** keeps client records (name, gender, birth date, height). The
+   client number entered on the device links measurements to the client; age,
+   height and gender the device does not send are taken from the record.
+5. **Device report** prepares a report for the developers in a few steps.
 
 ## Bluetooth
 
@@ -83,7 +86,10 @@ tartim import /media/$USER/SD/*.CSV    # import from an SD card
 tartim list --last 10
 tartim export --output measurements.csv  # for Excel / LibreOffice
 tartim raw --port /dev/ttyUSB0         # raw data for a new device
-tartim print --name "First Last"      # printable result sheet (PDF)
+tartim print --client 42               # printable result sheet (PDF)
+tartim client add 42 --name "First Last" --gender female --birth 01.05.1980 --height 165
+tartim client list
+tartim assign --record 12 --client 42  # link a measurement without a number
 ```
 
 The Turkish command names of earlier releases (`dinle`, `ice-aktar`, `rapor`, …)
@@ -91,8 +97,8 @@ keep working as aliases.
 
 Port settings: `--baud 9600 --parity N --bytesize 8 --stopbits 1` (defaults).
 
-Measurements are stored in `~/.local/share/tartim/tartim.db`, created readable
-by you only.
+Measurements and client records are stored in `~/.local/share/tartim/tartim.db`,
+created readable by you only.
 
 ## Own a scale? Send a device report
 
@@ -170,7 +176,7 @@ bug reports or to this repository.
 - [ ] Verify the `CS` checksum
 - [ ] Remote mode: send height, age and gender from the computer to the device
 - [x] Desktop interface (GTK)
-- [ ] Client records and progress charts
+- [x] Client records and progress charts
 - [x] Bluetooth: standard BLE scales, classic serial port, discovery report
 - [ ] Tartı FAST protocol (waiting for a device report)
 - [x] Printable result sheet (PDF) with progress charts
