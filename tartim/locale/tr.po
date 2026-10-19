@@ -1206,3 +1206,6 @@ msgstr "sonuc"
 
 msgid "tartim · open-source software (GPL-3.0-or-later)"
 msgstr "tartim · açık kaynak yazılım (GPL-3.0-or-later)"
+
+msgid "Segmental distribution"
+msgstr "Segmental dağılım"

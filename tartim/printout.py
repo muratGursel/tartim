@@ -275,12 +275,98 @@ class _Sheet:
         return self.table(rows, [52 * mm, 20 * mm, 22 * mm, 14 * mm, 18 * mm, 20 * mm, 18 * mm,
                                  22 * mm])
 
-    def composition(self, width):
+    def has_segments(self) -> bool:
+        return any(self.current.get(code) is not None
+                   for _label, fat, muscle in SEGMENTS for code in (fat, muscle))
+
+    def composition(self, width, height):
         e = self.current
         labels = [_("Weight"), _("Fat"), _("Water"), _("Fat-free"), _("Muscle"), _("Bone")]
         values = [e.get("Wk"), e.get("fW"), e.get("wW"), e.get("MW"), e.get("mW"), e.get("bW")]
-        chart = self.bar_chart(labels, values, width - 8, 84 * self.mm)
+        chart = self.bar_chart(labels, values, width - 8, height)
         return self.section(_("Body composition (kg)"), chart, width=width)
+
+    def silhouette(self, width):
+        """A simple body figure with each segment's muscle mass and fat percentage."""
+        from reportlab.graphics.shapes import Circle, Drawing, Line, Polygon, Rect, String  # noqa: PLC0415
+
+        c, e = self.colors, self.current
+        w, h = width - 8, 62 * self.mm
+        drawing = Drawing(w, h)
+        body = dict(fillColor=c.HexColor("#c9d8ea"), strokeColor=c.HexColor("#6f93bf"),
+                    strokeWidth=0.8, strokeLineJoin=1)
+        # The figure is drawn on a grid of 100 x 180 units: dx from the centre line,
+        # dy downwards from the top of the head; it is scaled to the box height.
+        cx, top, scale = w / 2, h - 3, (h - 6) / 180
+
+        def at(dx, dy):
+            return cx + dx * scale, top - dy * scale
+
+        def shape(points, mirrored=False):
+            flat = []
+            for dx, dy in points:
+                flat.extend(at(-dx if mirrored else dx, dy))
+            return Polygon(flat, **body)
+
+        arm = [(-27, 33), (-34, 37), (-38, 50), (-41, 76), (-45, 102), (-44, 109),
+               (-37, 110), (-36, 102), (-33, 78), (-29, 56)]
+        leg = [(-22, 103), (-1, 103), (-3, 140), (-4, 169), (-2, 176), (-15, 178),
+               (-16, 169), (-18, 140)]
+        torso = [(-11, 27), (11, 27), (25, 32), (30, 41), (26, 68), (21, 90), (23, 104),
+                 (-23, 104), (-21, 90), (-26, 68), (-30, 41), (-25, 32)]
+        for points in (arm, leg):
+            drawing.add(shape(points))
+            drawing.add(shape(points, mirrored=True))
+        for side in (-1, 1):
+            drawing.add(Circle(*at(side * 41, 112), 4.5 * scale, **body))            # hands
+        drawing.add(shape([(-5, 20), (5, 20), (6, 30), (-6, 30)]))                    # neck
+        drawing.add(shape(torso))
+        drawing.add(Circle(*at(0, 11), 11 * scale, **body))                           # head
+
+        muscle_colour, fat_colour = c.HexColor(BLUE), c.HexColor("#e8a33d")
+        lead = dict(strokeColor=c.HexColor("#16324f"), strokeWidth=0.6)
+        label_width = 46
+
+        def label(lx, ly, name, muscle, fat, target, left_side):
+            drawing.add(String(lx, ly, name, fontName=self.bold, fontSize=7))
+            for i, (colour, text) in enumerate([(muscle_colour, f"{number(muscle)} kg"),
+                                                (fat_colour, f"{number(fat)} %")]):
+                row = ly - 10 - i * 9
+                drawing.add(Rect(lx, row - 1, 6, 6, fillColor=colour, strokeColor=None))
+                drawing.add(String(lx + 9, row, text, fontName=self.font, fontSize=7))
+            start_x = lx + label_width if left_side else lx - 3
+            drawing.add(Line(start_x, ly - 7, *at(*target), **lead))
+
+        # The figure faces the reader: its right side is on the reader's left.
+        right_x, left_x = 4, w - label_width
+        values = {fat: (e.get(muscle), e.get(fat)) for _label, fat, muscle in SEGMENTS}
+        arm_y, leg_y = at(0, 62)[1], at(0, 128)[1]
+        label(right_x, arm_y, _("Right arm"), *values["FR"], (-38, 70), True)
+        label(left_x, arm_y, _("Left arm"), *values["FL"], (38, 70), False)
+        label(right_x, leg_y, _("Right leg"), *values["Fr"], (-10, 135), True)
+        label(left_x, leg_y, _("Left leg"), *values["Fl"], (10, 135), False)
+        label(left_x, at(0, 12)[1], _("Trunk"), *values["FT"], (8, 62), False)
+        # Legend
+        for i, (colour, text) in enumerate([(muscle_colour, _("Muscle (kg)")),
+                                            (fat_colour, _("Fat (%)"))]):
+            row = at(0, 6)[1] - i * 10
+            drawing.add(Rect(right_x, row - 1, 6, 6, fillColor=colour, strokeColor=None))
+            drawing.add(String(right_x + 9, row, text, fontName=self.font, fontSize=7))
+        return self.section(_("Segmental distribution"), drawing, width=width)
+
+    def left_column(self, width):
+        """Body composition, with the body figure below it when segments are known."""
+        from reportlab.platypus import Spacer, Table, TableStyle  # noqa: PLC0415
+
+        if not self.has_segments():
+            return self.composition(width, 84 * self.mm)
+        column = Table([[self.composition(width, 44 * self.mm)], [Spacer(1, 3 * self.mm)],
+                        [self.silhouette(width)]], colWidths=[width])
+        column.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
+        return column
 
     def segmental(self, width):
         e, mm = self.current, self.mm
@@ -322,6 +408,31 @@ class _Sheet:
                            extra=[("SPAN", (1, 0), (2, 0))])
         return self.section(_("Metabolism"), table)
 
+    def metabolism_compact(self, width):
+        """The metabolism values as a label / value list for a half-width column."""
+        e = self.current
+        bmr, weight = e.get("rB"), e.get("Wk")
+        rows = [[_("Metabolic age"), number(e.get("rA"), 0)],
+                [_("Basal metabolic rate"), f"{number(bmr, 0)} kcal · "
+                                            f"{number(bmr * 4.184 if bmr else None, 0)} kJ"],
+                [_("BMR / kg"), number(bmr / weight if bmr and weight else None, 1)],
+                [_("Visceral fat rating"), number(e.get("IF"), 0)]]
+        inner = width - 8
+        table = self.table(rows, [inner * 0.55, inner * 0.45], header=False,
+                           extra=[("ALIGN", (0, 0), (0, -1), "LEFT")])
+        return self.section(_("Metabolism"), table, width=width)
+
+    def right_column(self, width):
+        from reportlab.platypus import Spacer, Table, TableStyle  # noqa: PLC0415
+
+        column = Table([[self.segmental(width)], [Spacer(1, 3 * self.mm)],
+                        [self.metabolism_compact(width)]], colWidths=[width])
+        column.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
+        return column
+
     def scale(self, title: str, value: str, rng: reference.Range | None, raw: float | None,
               unit: str, width):
         """Low / normal / high boxes with an X under the matching one."""
@@ -336,9 +447,10 @@ class _Sheet:
         high = f"{_('High')} > {number(rng.high)}{unit}"
         marks = ["X" if cls == key else "" for key in (reference.LOW, reference.NORMAL,
                                                         reference.HIGH)]
-        column = (width - 8) / 3
-        table = self.table([[low, normal, high], marks], [column] * 3,
-                           extra=[("FONT", (0, 1), (-1, 1), self.bold, 10)])
+        inner = width - 8
+        table = self.table([[low, normal, high], marks], [inner * 0.28, inner * 0.44, inner * 0.28],
+                           extra=[("FONT", (0, 0), (-1, 0), self.bold, 6.5),
+                                  ("FONT", (0, 1), (-1, 1), self.bold, 10)])
         return self.section(f"{title}: {value}", table, width=width)
 
     def assessment(self):
@@ -458,8 +570,13 @@ class _Sheet:
         gap = Spacer(1, 3 * mm)
         half = (self.width - 4 * mm) / 2
         story = [self.header(), gap, self.client_row(), gap,
-                 self.side_by_side(self.composition(half), self.segmental(half)), gap,
-                 self.metabolism(), gap]
+                 ]
+        if self.has_segments():
+            # The body figure makes the left column taller; metabolism moves to the right.
+            story += [self.side_by_side(self.left_column(half), self.right_column(half)), gap]
+        else:
+            story += [self.side_by_side(self.left_column(half), self.segmental(half)), gap,
+                      self.metabolism(), gap]
         story += self.assessment()
         story += [gap, self.mass_analysis()]
         if len(self.history) >= 2:
